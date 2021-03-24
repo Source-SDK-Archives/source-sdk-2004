@@ -1,0 +1,45 @@
+// Copyright (C) 1997-2001 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+global proc buildXYZRotMM( )
+//
+// Creates a marking menu that allows the user
+// to select an axis of a manipulator - reuses
+// the name tempMM for the name of the menu, to
+// ensure that there's only one of these at
+// any one time.
+{
+	global string $gRotate;
+
+	if( `popupMenu -exists tempMM` )
+	{
+		deleteUI tempMM;
+	} 
+
+	setToolTo $gRotate;
+
+	popupMenu -mm 1 -b 1 -p viewPanes tempMM;
+		menuItem -rp "E" -l "Global" 
+			-c "manipRotateContext -e -mode 1 Rotate" 
+			globalRotateItem;
+		menuItem -rp "W" -l "Local" 
+			-c "manipRotateContext -e -mode 0 Rotate" 
+			localRotateItem;
+		menuItem -rp "S" -l "Gimbal" 
+			-c "manipRotateContext -e -mode 2 Rotate" 
+			gimbalRotateItem;
+	setParent -m ..;
+}

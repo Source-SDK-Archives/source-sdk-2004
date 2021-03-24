@@ -1,0 +1,89 @@
+global proc vertWeld()
+{	
+
+	SelectVertexMask;
+	global string $gCurrentSacredTool;
+	global string $gMove;
+	$gCurrentSacredTool = $gMove;
+	if (! `contextInfo -q -ex vertexWeldTool`)
+		{
+		scriptCtx
+			- i1 "vertWeld.bmp"
+			-tss 1
+			-esl 1
+			-iii 1
+			-euc 1
+			-sat 1
+			-polymeshVertex 1
+			-fcs "setEscapeCtx moveSuperContext; vertWeldStart"
+			-bcn "Vertex Weld"
+			-title "Vertex Weld Tool"
+			-sac 1
+			-snp "select a vertex to move and weld"
+			-ssp "shift select more vertices or hit ENTER to move and weld selected"
+			-dsp "hit ENTER to move and weld selected"
+			vertexWeldTool;
+		}
+	setToolTo vertexWeldTool;
+}
+
+
+
+
+global proc vertWeldStart ()
+{	
+	if (`selectMode -q -object`)
+		{
+		warning "Weld tool only operates correctly in with the vertex selection mask";
+		}
+	else
+		{
+		global int $vertexWeldSJ;
+		// setup Script job that will do weld when move is completed
+
+		string $selection[] = `ls -hl`;
+		$vertexWeldSJ = `scriptJob -ro 1 -ac ($selection[0] + ".o") "doVertWeld"`;
+		
+		//turn on constraints
+		snapMode -point true;
+		polyOptions -fb  -bcv 1;
+		
+		// switch to move tool (will flash if another gizmo was operating
+		// before this tool started; doesn't seem to be away around this
+		global string $gMove;
+		string $moveCtx = "setToolTo " + $gMove;
+		scriptJob -ro 1 -e "ToolChanged" $moveCtx;
+		}
+}
+
+global proc doVertWeld()
+{	
+	snapMode -point false;
+	polyOptions -bc;
+	float $pos[] = `xform -q -t -ws`;
+	polySelectConstraint -type 0x0001 -mode 3 -dist 1 -distbound  0 .01 -distpoint $pos[0] $pos[1] $pos[2];
+	polySelectConstraint -mode 0;
+
+	polyMergeVertex -d .1;
+	select -cl;
+	polySelectConstraint -type 0x8000 -mode 3 -length 1 -lengthbound  0 .01;
+	polyCollapseEdge;
+	polySelectConstraint -mode 0;
+	global string $gNonSacredTool;
+	$gNonSacredTool = "vertexWeldTool";
+};
+
+global proc abortVertWeld()	
+{
+	global int $vertexWeldSJ;
+
+	if ($vertexWeldSJ > 0)
+		{
+		scriptJob -k $vertexWeldSJ;
+		$vertexWeldSJ = 0;
+		}
+	polySelectConstraint -mode 0;
+	snapMode -point false;
+	polyOptions -bc;
+};
+

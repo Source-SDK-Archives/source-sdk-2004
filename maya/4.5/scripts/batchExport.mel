@@ -1,0 +1,141 @@
+// Batch exporter (reads qc files for info)
+
+//-----------------------------------------------------------------------------
+// Computes the name of the qc file to load
+//-----------------------------------------------------------------------------
+proc string determineQCFileName( string $fileName )
+	{
+	// Make sure it lies in the 'scenes' directory
+	string $pathCheck = `match "/[Ss][Cc][Ee][Nn][Ee][Ss]/" $fileName`;
+	$pathCheck = `tolower( $pathCheck )`;
+	if ($pathCheck != "/scenes/")
+		{
+		error ("In order to batch export to SMD, the maya file must lie in the 'scenes' directory!");
+		return "";
+		}
+
+	string $qcFileName = `substitute "/[Ss][Cc][Ee][Nn][Ee][Ss]/" $fileName "/"`;
+	$qcFileName = `substitute "\\.[Mm][AaBb]$" $qcFileName ".qc"`;
+	return $qcFileName;
+	}
+
+
+//-----------------------------------------------------------------------------
+// Add export files to list
+//-----------------------------------------------------------------------------
+proc int buildExportList( string $qcFileName, string $sceneDir, string $exportFiles[] )
+	{
+	trace "trying to open ";
+	trace $qcFileName;
+	trace "\n";
+
+	// Blow it off if we can't read it...
+	if  (! `filetest -r $qcFileName` )
+		{
+		error ("File " + $qcFileName + " must exist for batch export to work!");
+		return 0;
+		}
+
+	string $buffer[];
+	string $fileCommands[4] = { "$body", "$sequence", "replacemodel", "$animation", "$model" };
+	int $argumentIndex[4] = { 2, 2, 2, 2, 2 };
+
+	int $fileHandle = `fopen $qcFileName "r"`;
+	string $qcFileLine = `fgetline $fileHandle`;
+    while ( size( $qcFileLine ) > 0 ) 
+		{
+    	$qcFileLine = `fgetline $fileHandle`;
+
+		// Deal with C++ comments...
+		$qcFileLine = `substitute "//.*$" $qcFileLine " "`;
+
+		// Tokenize the line.
+		tokenize $qcFileLine $buffer;
+
+		// look for include files
+		if ( tolower( $buffer[0] ) == "$include" )
+			{
+			string $includeFile = `match "\".*\"" $qcFileLine`;
+			$includeFile = substituteAllString($includeFile, "\"", "");
+			if ( buildExportList( $includeFile, $sceneDir, $exportFiles ) == 0 )
+				{
+				fclose $fileHandle;
+				return 0;
+				}
+			}
+
+		// Deal with standard smd-using stuff
+		int $i = 0;
+		string $command;
+		for ( $command in $fileCommands )
+			{
+			if ( tolower( $buffer[0] ) == $command )
+				{
+				// Make sure the argument has quotes in it, otherwise ignore it
+				string $arg[1] = { $buffer[$argumentIndex[$i]] };
+				if (`match "\"" $arg[0]` == "\"")
+					{
+					// Remove quotes, build full file name
+					$arg[0] = substituteAllString($arg[0], "\"", "");
+					$arg[0] = `substitute "\\.[^/]*$" $arg[0] ""`;
+					$arg[0] = $sceneDir + $arg[0] + ".mb";
+					appendStringArray $exportFiles $arg 1;
+					}
+				}
+
+			$i++;
+			}
+	    }
+
+    fclose $fileHandle;
+	return 1;
+	}
+
+
+//-----------------------------------------------------------------------------
+// batch exports maya files
+//-----------------------------------------------------------------------------
+global proc batchExport()
+	{
+	source "smdOptionWindow";
+
+	// Need to remember this file, since we're going to re-open it after we're done
+	string $fileName = `file -q -sn`;
+
+	string $qcFileName = determineQCFileName( $fileName );
+	if ($qcFileName == "")
+		return;
+
+	string $scenePath = `substitute "/[^/]*$" $fileName "/"`;
+
+	string $exportFiles[];
+	if ( buildExportList( $qcFileName, $scenePath, $exportFiles ) == 0 )
+		return; 
+
+	string $sceneFile;
+	for ( $sceneFile in $exportFiles )
+		{
+		trace "------------------------------------------------------------------\n";
+		trace "exporting ";
+		trace $sceneFile;
+		trace "\n";
+
+		file -f -options "v=0" -typ "mayaBinary" -o $sceneFile;
+
+		int $ok = 1;
+		if ( isSmdInfoDefined() )
+			{
+			$ok = smdExport( `getAttr smdInfo.smdType`, `getAttr smdInfo.seperateBodyGroup` );
+			}
+		else
+			{
+			$ok = 0;
+			}
+
+			if (!$ok)
+				break;
+		}
+
+	// open the previous file
+	file -f -options "v=0" -typ "mayaBinary" -o $fileName;
+	}

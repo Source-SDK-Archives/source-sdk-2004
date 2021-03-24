@@ -1,0 +1,13 @@
+global proc smdExportMenuItem ()
+	{
+	source "smdOptionWindow";
+
+	if (isSmdInfoDefined() == 0)
+		{
+		smdOptionWindow;
+		}
+	else
+		{
+		smdExport( `getAttr smdInfo.smdType`, `getAttr smdInfo.seperateBodyGroup` );
+		}
+	}

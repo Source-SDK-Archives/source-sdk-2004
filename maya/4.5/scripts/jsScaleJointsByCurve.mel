@@ -1,0 +1,192 @@
+// Copyright (C) 1997-2001 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+//	SCRIPT: jsScaleJointsByCurve.mel	
+//	AUTHOR:	Jason Schleifer
+//			oy_vay@hotmail.com
+//	DATE:	July 17, 2001	
+//
+//	DESCRIPTION:	Creates an interface that makes it easier to scale the
+//	specified joints by a curve length.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+
+
+global proc jsScaleJointsByCurve ()
+{
+	$win = "jsScaleJointsByCurveWin";
+	if (`window -exists $win`)
+		deleteUI $win;
+
+	jsCreateScaleJointsByCurveWin $win;
+
+	showWindow $win;
+}	
+
+global proc jsCreateScaleJointsByCurveWin (string $win)
+{
+	// create the window
+	window -t "jsScaleJointsByCurve" $win;
+
+	columnLayout -cat both 5 -adj true;
+	textFieldButtonGrp -l "Curve:" -bl "sel" -bc "jsScaleJointsAddCurve"-adj 2 jsScaleJointsTFBG;
+	textScrollList -ams true -nr 10 jsScaleJointsTSL;
+	rowColumnLayout -nc 2 -cat 1 "both" 5 -cat 2 "both" 5;
+	button -l "Add Joints" -c "jsScaleJointsAdd";
+	button -l "Remove Joints" -c "jsScaleJointsRemove";
+	setParent ..;
+	separator -style "single";	
+	rowColumnLayout -nc 2 -cat 1 "both" 5 -cat 2 "both" 5;
+	button -l "Scale Joints" -c "jsCreateScaleJointsGo";
+	button -l "Cancel" -c ("deleteUI " + $win);
+}
+
+global proc jsScaleJointsAddCurve ()
+{
+	string $objs[0];
+	$objs = `ls -sl`;
+	
+	// check and see if $objs[0] is a nurbs curve
+	if (size($objs) == 0)
+		error "You have nothing selected, try again.";
+	$shape = `listRelatives -f -c $objs[0]`;
+	if (`nodeType $shape[0]` != "nurbsCurve")
+		error "You don't have a nurbs curve selected.\n";
+	textFieldButtonGrp -e -tx $objs[0] jsScaleJointsTFBG;
+}
+
+global proc jsCreateScaleJointsGo ()
+{
+	// find out which joints are in the textScrollList and what curve is in the
+	// curveUI
+	string $curve;
+	string $joints[0];
+	
+	$curve = `textFieldButtonGrp -q -tx jsScaleJointsTFBG`;
+	$joints = `textScrollList -q -ai jsScaleJointsTSL`;
+
+	// build the command
+	$cmd = "jsCreateScaleJointsMake ";
+	// check that curve is valid
+	if (!`objExists $curve`)
+		error ($curve + " doesn't exist.\n");
+	$cmd += ("\""+$curve +"\" \"");
+
+	for ($joint in $joints)
+	{
+		// make sure $joint exists
+		if (!`objExists $joint`)
+			error ($joint + " doesn't exist.\n");
+
+		$cmd += ($joint + " ");
+	}
+	
+	$cmd += "\"";
+	evalEcho $cmd;
+}
+
+global proc jsCreateScaleJointsMake (string $curve, string $jointStr)
+{
+	// tokenize $jointStr
+	string $joints[0];
+	string $curveShape;
+	tokenize ($jointStr, " ", $joints);
+	
+	// create a curveInfo node for the curve
+	$shape = `listRelatives -f -s $curve`;
+	$curveShape = $shape[0];
+	
+	$curveInfo = `createNode curveInfo`;
+	$curveInfo = `rename $curveInfo ($curve + "_info")`;
+
+	connectAttr ($curveShape + ".worldSpace[0]") ($curveInfo + ".inputCurve");
+
+	// now we can get the arclength of the curve
+	$arcLen = `getAttr ($curveInfo + ".arcLength")`;
+
+	// next, create a multiplyDivide node which will create the scale for us
+	$curveScale = `createNode multiplyDivide`;
+	$curveScale = `rename $curveScale ($curve + "_scale")`;
+
+	// set the operation to divide
+	setAttr ($curveScale + ".operation") 2;
+
+	// connect the input1X to the arcLength
+	connectAttr ($curveInfo + ".arcLength") ($curveScale + ".input1X");
+
+	// set the orig arcLength
+	setAttr ($curveScale + ".input2X") $arcLen;
+
+	// now for each of the joints, we're going to create a multiplyDivide node
+	// which will calculate the new TY based on this scale.
+	for ($joint in $joints)
+	{
+		// get the current ty
+		$ty = `getAttr ($joint + ".ty")`;
+
+		// create the multiply divide node
+		$jointScale = `createNode multiplyDivide`;
+		$jointScale = `rename $jointScale ($joint + "_scale")`;
+
+		// connect the $curveScale.outputX to $jointScale.input1X;
+		connectAttr ($curveScale + ".outputX") ($jointScale + ".input1X");
+
+		// set the $jointScale.input2X to the current TY
+		setAttr ($jointScale + ".input2X") $ty;
+
+		// now connect the $jointScale.outputX to the $joint + ".ty");
+		connectAttr -f ($jointScale + ".outputX") ($joint + ".ty");
+	}
+}
+global proc jsScaleJointsRemove ()
+{
+	// removes the selected joints from the textScrollList
+	string $currentSel[0];
+	$currentSel= `textScrollList -q -si jsScaleJointsTSL`;
+	for ($item in $currentSel)
+	{
+		textScrollList -e -ri $item jsScaleJointsTSL;
+	}
+}
+global proc jsScaleJointsAdd ()
+{
+	// adds the selected joints to the text scrollList
+	string $joints[0];
+	string $current[0];
+	string $new[0];
+
+	$joints = `ls -sl -type joint`;
+	
+	// find out what joints are already in the textScrollList
+	$current = `textScrollList -q -ai jsScaleJointsTSL`;
+
+	// remove all the items in the textScrollList;
+	textScrollList -e -ra jsScaleJointsTSL;
+
+	// combine the $joints and $current arrays, and put those in the
+	// textScrollList
+	$new = `stringArrayCatenate $joints $current`;
+	$new = `stringArrayRemoveDuplicates $new`;
+
+	// now add all the new ones to the list
+	for ($item in $new)
+	{
+		textScrollList -e -a $item jsScaleJointsTSL;
+	}
+}

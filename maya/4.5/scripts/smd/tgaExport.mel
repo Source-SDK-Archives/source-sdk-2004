@@ -1,0 +1,125 @@
+//-----------------------------------------------------------------------------
+// determines the relative path of the TGA file
+//-----------------------------------------------------------------------------
+proc string calcRelativeTGAFileName( string $fullTGAFileName )
+	{
+	if ( $fullTGAFileName == "" )
+		return "";
+
+	// Determine VMT file name
+	string $relativeFileName = getRelativeMaterialsrcName( $fullTGAFileName );
+	if ( $relativeFileName == "" )
+		{
+		warning "In order to export VMTs, the source textures must lie under materialsrc!";
+		return "";
+		}
+
+	// make sure it's a tga file:
+	if (`match "\\.tga$" $relativeFileName` != ".tga") 
+		{
+		warning ($fullTGAFileName + " is not a tga File");
+		return "";
+		}
+
+	// Strip off the extension (if any)
+	$relativeFileName = `substitute "\\.[^/]*$" $relativeFileName ""`;
+	return $relativeFileName;
+	}
+
+
+//-----------------------------------------------------------------------------
+// Exports TGA files into VTF files
+//-----------------------------------------------------------------------------
+global proc int tgaExport( string $fileNode, int $overwriteMode )
+	{
+	// takes a file node and writes the txt
+	// and vtf files necessary to run in the engine.
+	// uses the node and not a file path so it
+	// can access persistent data about the file
+	// eg. mip Levels
+	// returns 1 if the export looks right and 0 if it looks wrong
+
+	// the fudge factor for matching maya's numberts to the engine's;
+	float $bumpScaleCorrection = .2;
+
+	// get the file path from the node
+	string $tgaFile = (`getAttr ($fileNode + ".ftn")`);
+	if (`size $tgaFile` == 0)
+		{
+		warning ("no file in node " + $fileNode);
+		return 0;
+		}
+
+	// Compute a relative file name
+	$relativeTGAFileName = calcRelativeTGAFileName( $tgaFile );
+	if ( $relativeTGAFileName == "" ) return 0;
+
+	// change height maps to normal maps
+	// get the bump scale from the downstream bump node
+	float $bumpScale;
+	int $isNormalMap;
+	if (`match "_height$" $relativeTGAFileName` == "_height")
+		{
+		$relativeTGAFileName = `substitute "_height$" $relativeTGAFileName "_normal"`;
+		string $downStream[];
+		$downStream = `listConnections -s 0 -d 1 -type bump2d $fileNode`;
+		if (`size $downStream` == 0) 
+			{
+			warning ("unable to find bump scale information for " + $fileNode);
+			return 0;
+			}
+		$bumpScale = `getAttr ($downStream[0] + ".bumpDepth")`;
+		$bumpScale *= $bumpScaleCorrection;
+		$isNormalMap = true;
+		}
+
+	//name the text file
+	string $textFile = getFullMaterialsrcPath( $relativeTGAFileName ) + ".txt"; 
+
+	// OK to write?
+	if (!`okToWrite $textFile $overwriteMode`) 
+		{
+		warning ("couldn't write " + $textFile);
+		return 0;
+		}
+
+	// write it out
+	int $fileH = `fopen $textFile "w"`;
+	if ($fileH == 0) warning ("unknown problem writing " + $textFile);
+
+	if ($isNormalMap)
+		{
+		fprint $fileH (" \"normal\" \t\t\t \"1\"\r\n");
+		fprint $fileH (" \"bumpScale\" \t\t \"" + $bumpScale + "\" \r\n");
+		}
+
+	// here's where we will eventually collect and write other info
+	//fprint $fileH (" \"trilinear\" \t\t\t \"1\"\r\n");
+
+	fclose $fileH;
+
+	// Attempt to check out the .vtf file....
+	string $vtfFile = getFullMaterialPath( $relativeTGAFileName ) + ".vtf"; 
+	if (!`okToWrite $vtfFile $overwriteMode`)  return 0;
+
+	trace ("   vtf export for " + $textFile + "\n");
+	string $vtex;
+	if ($isNormalMap)
+		{
+		$vtex = "height2Normal\n";
+		$vtex += `system ("height2Normal -nopause " + $textFile)`;
+		$vtex += "\n";
+		}
+
+	$vtex += "vtex\n";
+	$vtex += `system ("vtex -nopause " + $textFile)`;
+	$vtex += "\n\n";
+
+	// look for errors from Vtex
+	if (`match "ERROR" $vtex` == "ERROR") return 0;
+	if (`match "can't" $vtex` == "can't") return 0;
+	if (`match "trouble" $vtex` == "trouble") return 0;
+
+	// whew.
+	return 1;
+	}

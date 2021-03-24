@@ -1,0 +1,6 @@
+"ShowDestAlpha"
+{
+	"$fbtexture" "_rt_FullFrameFB"
+	"%noToolTexture" 1
+	"$MULTIPLYBYALPHA" 1
+}

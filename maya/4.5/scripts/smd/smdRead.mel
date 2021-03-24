@@ -1,0 +1,429 @@
+// utility proc -- just read ahead in file to until $tag is found at line start...
+proc readUntil (string $tag, int $fileHandle) 
+{
+	string $lineIn;
+	string $exp = "^" + $tag;
+	while	(`match $exp $lineIn` != $tag)
+		{
+		if (`feof $fileHandle`) error ("end of file readched without tag " + $tag);
+		$lineIn = `fgetline $fileHandle`;
+		}
+}
+
+// returns the bone connected to index N in the dictionary
+proc string getBone (int $bone) 
+{
+	if ($bone < 0) return "";
+	global string $g_smdDict;
+	string $boneName[];
+	$boneName = `listConnections ($g_smdDict + ".comps[" + $bone + "]")`;
+	return $boneName[0];
+}
+
+// returns the SG corresponding to a raw name 
+// have to do this because many file names
+// may have illegal characters
+proc string getShaderFromName (string $name, int $getTextures)
+{
+	global string $g_smd_textureList[];
+	global string $g_smd_shaderList[];
+	string $s;
+	int $i;
+	for ($s in $g_smd_textureList)
+	{
+		if ($s == $name) return $g_smd_shaderList[$i];
+		$i++;
+	}
+	$g_smd_shaderList[$i] = `smdMakeShader $name $getTextures`;
+	$g_smd_textureList[$i] = $name;
+	return $g_smd_shaderList[$i];
+}
+
+// wiggle the mouse cursor
+proc flicker ()
+{
+	global int $state;
+	$state = ! $state;
+	waitCursor -state $state;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+//	main procedure : read an smd file from $smdFile
+//
+// basic procedure:
+// 1) read the smd file's hierarchy section
+//	2) make a joint object for each xform in the hierarchy
+//	3) parent joints to recreate original structure
+//	4) move and rotate joints to match originals
+// 5) read the triangle list
+//	6) make a shader for each texture referenced in the triangle list
+////////////////////////////////////////////////////////////////////////////////////////////////
+// known issues:
+// -- sometimes script will abort on first try -- incomplete runtime compile?
+// -- workaround: re-run script, it usually works on second try.
+// -- needs graceful exits, progress bar
+// -- SLLLLOOOOOWWWW on models > 1500 polys
+// -- does not handle up-axis conversions (design decision -- use maya "upaxis -ax Z -rv" to work with max models)
+// -- because of object-name format limitations, it is possible to create
+//	a model in one package which will have different bone names in the other.
+//	secondarily, each transfer will generate an extra node since the smd format
+//	includes a dummy transform entry for the mesh but there is no way to tell 
+//	which entry it is.  Not deleting unused nodes after transfers might cause
+//	creeping bone-list expansion. 
+
+
+global proc string smdRead (string $smdFile, int $getTextures)
+{
+float $time = `timerX`;
+print `system "time"`;
+file -force -new;
+undoInfo -state off;
+
+global string $g_smdTexturePath = "";
+global string $g_smd_textureList[];
+global string $g_smd_shaderList[];
+clear $g_smd_textureList;
+clear $g_smd_shaderList;
+source "AEfileTemplate";
+source "smd/smdUpAxis";				// rotating to maya's coord system
+source "smd/smdAssignVert";			// assigning weightmaps
+source "smd/smdMakeShader";			// creating dummy shaders
+source "smd/smdCreateBlindDataTemplate";	// makes a blind data template for vertex data;
+smdCreateBlindDataTemplate();
+
+// force the name into forward-slash-land
+$smdFile = `fromNativePath $smdFile`;
+
+int $fileHandle; // maya uses these to track file i/o "objects"
+
+// simple error checks on the file:
+if ( (! `file -q -exists $smdFile`) || (`size $smdFile` == 0) )
+	{
+	error ("smdRead: nonexistent smd file: \"" + $smdFile + "\" ");
+	}
+
+// Open file & make sure it read OK:
+$fileHandle = `fopen $smdFile "r"`;
+if ($fileHandle == 0)
+	{
+	error ("smdRead: could not open file \"" + $smdFile + "\ for read");
+	}
+
+// Use a dummy DAG node as a simple dictionary. The "comps" attribute 
+// will be linked to the nodes in the order they are stored in the smd
+global string $g_smdDict;
+$g_smdDict = `createNode unknownDag`;
+addAttr -ln comps -multi -im 1 -at message $g_smdDict;
+
+
+// skip ahead until the "nodes" tag (usually line 2)
+readUntil "nodes" $fileHandle;
+
+
+// load up first line
+string $line;
+string $parseLine[];
+string $getParent;
+$line = `fgetline $fileHandle`;
+
+// hierarchy loop: read until "end" 
+while (`match  "^end" $line` != "end") 
+	{	
+		select -cl; // this makes sure joints don't get auto-parented
+		if (! tokenizeList ($line, $parseLine))
+			{
+			error ("error processing bone hierarchy in line: " + $line);
+			}
+
+		int $myID, $parentID, $tokens, $q;
+		string $bone = "";
+		
+		$tokens = `size $parseLine`;
+
+		$myID = $parseLine[0];
+		$parentID = $parseLine[$tokens - 1];
+		
+		for ($q = 1; $q < ($tokens - 1); $q++) // reassemble names with spaces
+			{
+			$bone = $bone + " " + $parseLine[$q];
+			}
+		$bone = `substituteAllString $bone "\"" ""`; //kill quotations;
+		$bone = `strip $bone`; // trim leading and trailing spaces
+		$bone = `joint -name $bone`;	// use the string, let maya rename spaces to underscores
+		
+		addAttr -ln smdParent -at short $bone;
+		setAttr ($bone + ".smdParent") $parentID;		 // store the parentage info
+		connectAttr ($bone + ".message") ($g_smdDict + ".comps[" + $myID + "]"); // link it to the $g_smdDict node
+		$line = `fgetline $fileHandle`;
+
+	} // end hierarchy loop
+
+
+// now loop through all the bones, parenting them according to the parentID #'s and $g_smdDict;
+string $eachBone;
+for ($eachBone in `listConnections ($g_smdDict + ".comps")`)
+	{
+		int $par = `getAttr ($eachBone + ".smdParent")`;
+		if ($par >= 0)
+		{
+			string $parent[] = `listConnections ($g_smdDict + ".comps[" + $par  + "]")`;
+			parent $eachBone $parent[0];
+		}
+	}
+
+
+// now grab and apply the poses
+$line = "";
+readUntil "time" $fileHandle;
+$line = `fgetline $fileHandle`;
+
+// begin position/rotation loop
+while (`match  "^end" $line` != "end") 
+	{
+	tokenizeList ($line, $parseLine);
+	int $id = $parseLine[0];
+	string $jnt[];
+	float $tx, $ty, $tz, $rx, $ry, $rz;
+	$jnt = `listConnections ($g_smdDict + ".comps[" + $id + "]")`;
+	$tx = $parseLine[1];
+	$ty = $parseLine[2];
+	$tz = $parseLine[3];
+	$rx = $parseLine[4];
+	$rx = `rad_to_deg $rx`; // just forcing the type conversion here...
+	$ry = $parseLine[5];
+	$ry = `rad_to_deg $ry`;
+	$rz = $parseLine[6];
+	$rz = `rad_to_deg $rz`;
+
+	move -ls -wd $tx $ty $tz $jnt[0]; // these two lines do the local space placement
+	rotate -a -os $rx $ry $rz $jnt[0]; // and rotation
+
+	$line = `fgetline $fileHandle`;
+	}
+
+
+int $pieceCounter;
+refresh;
+readUntil "triangles" $fileHandle;
+// now start reading triangles
+while (! `feof $fileHandle`)
+	{
+	string $shader = `fgetline $fileHandle`;
+	$shader = `tolower $shader`;
+	if ($shader == "end\n") break;  // this would be the end of the triangle section
+
+	// if there's not a shader with this name, create one;
+	string $shaderNode;
+	$shaderNode = `strip $shader`;
+	$shaderNode = `basename $shaderNode ".tga"`;
+	$shaderNode = `basename $shaderNode ".bmp"`;
+	$shaderNode = `getShaderFromName $shaderNode $getTextures`;
+	
+	// setup vars for triangles
+	matrix $p[3][3];
+	matrix $n[3][3];
+	matrix $uv[3][2];
+	matrix $w[3][3];
+	matrix $boneList [3][3];
+	int $influences [3];
+	int $vert;
+	int $comp;
+
+	
+	// grab each vertex entry line
+	for ($vert = 0; $vert < 3; $vert ++) 
+		{
+		flicker (); // twiddle the watch cursor
+		$line = `fgetline $fileHandle`;
+		tokenizeList ($line, $parseLine);
+		
+		// get the vertex weighting info, stuff into $boneList and $w arrays;
+		if (`size $parseLine` == 9)
+			{
+			$boneList[$vert][0] =  int($parseLine[0]);
+			$w[$vert][0] = 1;
+			$influences[$vert] = 1;
+			}
+		else
+			{
+			$influences[$vert] = $parseLine[9];
+			if ($influences[$vert] > 3) $influences[$vert] = 3; // take only the first three weights.
+			int $i;
+			for ($i = 0; $i < $influences[$vert]; $i ++)
+				{
+				$boneList[$vert][$i] = int ($parseLine[10 + ($i * 2)]);
+				$w[$vert][$i] = float ($parseLine[11 + ($i * 2)]);
+				}
+			}
+		
+		// store the normal and position data in $p and $n arrays
+		for ($comp = 1; $comp < 4; $comp ++)
+			{
+			$p[$vert][$comp - 1 ] = $parseLine[$comp];
+			$n[$vert][$comp - 1 ] = $parseLine[$comp + 3];
+			if ($comp < 3)$uv[$vert][$comp - 1] = $parseLine[$comp + 6];
+			}
+		
+		}
+	
+	// now make the face. 
+	string $face[] = `polyCreateFacet
+				-ch off
+				-p $p[0][0] $p[0][1] $p[0][2]
+				-p $p[1][0] $p[1][1] $p[1][2]
+				-p $p[2][0] $p[2][1] $p[2][2]
+				-name smd_mesh`;
+
+	// assign the shader
+	
+	sets -e -forceElement $shaderNode $face[0];
+
+	// fix the UV's and normals; save weighting data
+	for ($vert = 0; $vert < 3; $vert ++)
+		{
+		string $vertexID = ($face[0] + ".vtx[" + $vert + "]");
+		// normals
+		polyNormalPerVertex -x $n[$vert][0]  -y $n[$vert][1] -z $n[$vert][2] $vertexID;
+		// uvs
+		polyEditUV -r false -uValue $uv[$vert][0] -vValue $uv[$vert][1] ($face[0] + ".map[" + $vert + "]");
+		// weight data
+		polyBlindData -id 9898 -associationType "vertex" -longDataName "weight1" -doubleData $w[$vert][0] $vertexID ;
+		polyBlindData -id 9898 -associationType "vertex" -longDataName "weight2" -doubleData $w[$vert][1] $vertexID;
+		polyBlindData -id 9898 -associationType "vertex" -longDataName "weight3" -doubleData $w[$vert][2]$vertexID;
+		polyBlindData -id 9898 -associationType "vertex" -longDataName "bone1" -intData $boneList[$vert][0] $vertexID;
+		polyBlindData -id 9898 -associationType "vertex" -longDataName "bone2" -intData $boneList[$vert][1] $vertexID;
+		polyBlindData -id 9898 -associationType "vertex" -longDataName "bone3" -intData $boneList[$vert][2] $vertexID;
+		polyBlindData -id 9898 -associationType "vertex" -longDataName "numBones" -intData $influences[$vert] $vertexID ;
+		}
+	refresh;
+	$pieceCounter ++;
+	// sew up the pieces if the chunk is completed
+	// we do this in chunks because the uniting and vert weld operations are memory hogs
+	// the polySelectConstraint line forces the vert merge only on "edge" verts so we
+	// cut down on search times. This value could probably stand some twiddling for best performance
+
+	if ($pieceCounter == 96)
+		{
+		// select all the meshes & unite
+		select `ls "smd_mesh*"`;
+		string $unite[] = `polyUnite -ch off -name "smd_mesh"`;
+		// grab the edge vertices
+		polySelectConstraint -m 3 -t 1 -w 1;
+		string $edgeVerts[] = `ls -sl`;
+		$edgeVerts = `filterExpand -sm 31 $edgeVerts`;
+		select $edgeVerts;
+		// merge duplicates
+		polyMergeVertex  -d 0.001 -texture true -ch off;
+		$pieceCounter = 0;
+		}
+		
+	}
+print "finished piecewise import\n";
+
+// Complete the last union operation
+select `ls "smd_mesh*"`;
+print "uniting\n";
+string $unite[] = `polyUnite -ch off -name "smd_mesh"`;
+polySelectConstraint -m 3 -t 1 -w 1;
+string $edgeVerts[] = `ls -sl`;
+$edgeVerts = `filterExpand -sm 31 $edgeVerts`;
+select $edgeVerts;
+print "merging verts\n";
+polyMergeVertex  -d 0.001 -texture true -ch off;
+
+// now add the skin cluster
+print "skinning\n";
+select `ls -type joint`;
+select -add $unite[0];
+string $skinCluster[] = `skinCluster -mi 3 -dr 3`;
+
+// for ease of use, make these into simple strings
+string $mesh = $unite[0];
+string $skin = $skinCluster[0];
+
+// get the vertex count;
+int $pe[] = `polyEvaluate -v $mesh`;
+int $vc = $pe[0];
+int $v;
+
+string $badVertList[];
+for ($v = 0; $v < $vc; $v ++)
+	{
+	string $bones[] = {"bone1","bone2","bone3"};
+	string $weights[] = {"weight1","weight2","weight3"};
+	string $cmd = "skinPercent ";
+	string $vt = ($mesh + ".vtx[" + $v + "]");
+
+	// get the first weight and bone data;
+	int $nb[] = `polyQueryBlindData -id 9898 -ldn "numBones" $vt`;
+	if ($nb[0] == 0 ) 
+		{
+			warning ("vertex " + $v + " has no or bad weighting data\n");
+			$badVertList[`size $badVertList`] = $vt;
+			continue;
+		}
+	int $t;
+	for ($t = 0; $t < $nb[0]; $t ++)
+		{
+		// why did  the blind data call start returning arrays???
+		int $b[] = `polyQueryBlindData -id 9898 -ldn $bones[$t] $vt`;
+		float $w[] = `polyQueryBlindData -id 9898 -ldn $weights[$t] $vt`;
+		string $bone = `getBone $b[0]`;
+		$cmd += ("-tv " + $bone + " " + $w[0] + " ");
+		}
+		
+	$cmd += " -nrm true " + $skin + " " + $vt + ";";
+	trace ($cmd + "\n");
+	eval $cmd;
+	flicker();
+	}
+
+polySelectConstraint -m 0;
+waitCursor -state 0;
+print "done\n";
+print ("elapsed time: " + `timerX -st $time` + " seconds\n");
+
+
+string $opt;
+$opt =  `confirmDialog -title "SMD import options" 
+		-message "Choose 'model' options to re-orient the imported model.\nChoose 'world' to change Maya's coordinate system." 
+		-button "Model > Y-up" 
+		-button "Model > Z-up"
+		-button "World > Y-up"
+		-button "World > Z-up"
+		-button "No Change" -defaultButton "Model to Y-up" -cancelButton "No Change" -dismissString "No Change" `;
+
+switch ($opt)
+{
+	case "World > Y-up":  upAxis -ax y -rv; break;	
+	case "World > Z-up": upAxis -ax z -rv; break;
+	case "Model > Y-up": smdUpAxis -y; break;
+	case "Model > Z-up": smdUpAxis -z; break;		
+}
+
+print $opt;
+undoInfo -state on;
+
+
+select $badVertList;
+fclose $fileHandle;
+return $smdFile;
+}
+
+
+global proc string smdTest () // prompts for a file to import
+{
+	string $test = `fileDialog -dm "*.smd"`;
+	return `smdRead $test 1`;
+}
+
+global proc string smdBig () // doesn't prompt for files, so you can leave the computer.
+{
+	string $test = `fileDialog -dm "*.smd"`;
+	return `smdRead $test 0`;
+}
+
+
+

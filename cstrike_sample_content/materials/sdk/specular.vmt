@@ -1,0 +1,6 @@
+"LightmappedGeneric"
+{
+	"$basetexture" "sdk/specular"
+	"$envmap" "env_cubemap"
+	"$envmapmask" "sdk/specular_mask"
+}

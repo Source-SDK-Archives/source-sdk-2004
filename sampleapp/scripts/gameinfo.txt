@@ -1,0 +1,13 @@
+// Valve Game Info file
+//  These are key/value pairs.  Certain mods will use different settings.
+//
+GameInfo
+{
+	game	"HL2 SDK Game"
+	//title	"COUNTER-STRIKE'"
+	//title2	"source"
+	type multiplayer_only
+	nomodels 1
+	nohimodel 1
+	nocrosshair 0
+}

@@ -1,0 +1,16 @@
+global proc int smdAssignVert (float $pos[], string $bones[], string $weights[])
+{	
+//	global string $g_smdMesh;
+//	global string $g_smdRead_dict;
+//	vector $comp = <<$pos[0], $pos[1], $pos[2]>>;
+//	vector $this;
+//	float $posOutput[3];
+//	int $v;
+//	int $polyCount[] = `polyEvaluate -v $g_smdMesh`;
+//	for ($v = 0; $v <= $polyCount[0]; $v++)
+//		{
+//			//
+//		}
+//	}
+return 1;
+}

@@ -1,0 +1,58 @@
+// Copyright (C) 1997-2001 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+//	SCRIPT:	jsListCreatures.mel
+//	AUTHOR:	Jason Schleifer
+//			oy_vay@hotmail.com
+//	DATE:	July 21, 2001	
+//
+//	DESCRIPTION:	This script will find all locators in the scene
+//					with a jsCreature attribute on them.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+
+global proc string[] jsListCreatures ()
+{
+
+	string $creatures[0];
+	string $locators[0];
+
+	// get all the locators in the scene
+	$locators = `ls -type locator`;
+
+	// now for each locator, go through and find out if there's an attribute on
+	// it called jsCreature.  If so, return the full path name
+	
+	int $cc = 0;
+	for ($loc in $locators)
+	{
+		string $attributes[0];
+		$attributes = `listAttr -ud $loc`;
+		for ($attr in $attributes)
+		{
+			if ($attr == "jsCreature")
+			{
+				$creatures[$cc] = $loc;
+				$cc = $cc+1;
+			}
+		}
+
+	}
+	return $creatures;
+}

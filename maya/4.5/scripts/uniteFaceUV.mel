@@ -1,0 +1,18 @@
+global proc uniteFaceUV ()
+{
+string $selectedFaces[] =  `filterExpand -sm 34`;
+if (`size $selectedFaces` > 0)
+	{
+	select $selectedFaces;
+	PolySelectConvert 2;
+	string $edgeList[] = `filterExpand -sm 32`;
+	polyMapCut -ch 1 $edgeList;
+	select `polyListComponentConversion -fv -fe -fuv -tf -in`;
+	select `polyListComponentConversion -ff  -fuv -te -in`;
+	polyMapSewMove;
+	}
+else
+	{
+	warning "no poly faces selected";
+	}	
+}

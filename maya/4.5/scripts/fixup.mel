@@ -1,0 +1,73 @@
+//-----------------------------------------------------------------------------
+// Scripts that get called when the file loads + unloads
+//-----------------------------------------------------------------------------
+global proc onLoad()
+	{
+	source "texFixup";
+	texFixup;
+	}
+
+
+global proc onUnload()
+	{
+	}
+
+
+//-----------------------------------------------------------------------------
+// Fixes up the smd info node
+//-----------------------------------------------------------------------------
+global proc smdInfoFixup()
+	{
+	// Remove the autoExport field of smdInfo...
+	string $check[] = `ls smdInfo`;
+	if (`size $check` == 0)
+		return;
+
+	int $autoExport = `attributeQuery -n smdInfo -ex autoExport`;
+	if ($autoExport != 0)
+		{
+		deleteAttr smdInfo.autoExport;
+		scriptNode -e  -afterScript "" smdInfo;
+		}
+
+	// For backwards compatibility: add in the 'seperateBodyGroup' attribute if it doesn't exist...
+	int $bodyGroupExists = `attributeQuery -n smdInfo -ex seperateBodyGroup`;
+	if ($bodyGroupExists == 0)
+		{
+		addAttr -ln seperateBodyGroup -at bool  smdInfo;
+		}
+	}
+
+
+global proc fixup()
+	{
+	source "texFixup";
+
+	// Strip out unnecessary (and invalid) smdInfo nodes. Files appear to have tons of them!
+	string $test;
+	string $bogusSmdInfo[] = `ls`;
+	for ( $test in $bogusSmdInfo )
+		{
+		if ((`match "smdInfo" $test`) == "smdInfo")
+			{
+			if ( $test != "smdInfo" )
+				{
+				delete $test;
+				}
+			}
+		}
+
+	smdInfoFixup;
+
+	// add auto-fixup calls to occur when files load + save
+	string $check[] = `ls valveFixup`;
+	if (`size $check` == 0)
+		{
+		scriptNode -st 2 -name "valveFixup";
+		scriptNode -e  -beforeScript "onLoad" valveFixup;
+		scriptNode -e  -afterScript "onUnload" valveFixup;
+		}
+
+	texFixup;
+	}
+

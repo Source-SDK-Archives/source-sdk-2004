@@ -1,0 +1,225 @@
+// GUI for animation mirror
+// persistent options:
+//	flip_sourceMode		use object, hierarchy or specified
+//	flip_source		source of the animations
+//	flip_curveSource	use all, specified or selected
+//	flip_animationRange	use anim range, curve length, or specified times
+//	flip_timeStart		start time for source copy
+//	flip_timeEnd		end time for source copy
+//	flip_offsetMode		try to analyze cycle?
+//	flip_timeOffset		offset pasted curve by how much
+//	flip_valueOffset	offset pasted value by X.
+//	flip_cycleType		none, cycle, oscillate or cycle offset
+
+global proc saveFlipAnimValues ()
+{
+ optionVar -sv flip_sourceMode `radioCollection -q -sl fao_sourceMode`;
+ optionVar -sv flip_source `textField -q -text fao_sourceObject`;
+ optionVar -sv flip_curveSource `radioCollection -q -sl fao_curveSource`;
+ optionVar -sv flip_sourceAttrib  `textField -q -text fao_sourceAttrib`;
+ optionVar -sv flip_animationRange `radioCollection -q -sl fao_animationRange`;
+ optionVar -iv flip_timeStart	`intField -q -value fao_timeStart`;
+ optionVar -iv flip_timeEnd	`intField -q -value fao_timeEnd`;
+ optionVar -fv flip_timeOffset	`floatFieldGrp -q -value1 fao_timeOffset`;
+ optionVar -fv flip_valueOffset	`floatFieldGrp -q -value1 fao_valueOffset`;
+}
+
+
+global proc flipAnimWindow ()
+{
+if (`window -exists flipAnimOptions`)
+	{
+	deleteUI -window flipAnimOptions;
+	}
+
+window -title "Mirror Animation"
+		-sizeable false
+		-w 320
+		-h 424
+		-mnb false
+		-mxb false
+		flipAnimOptions;
+
+columnLayout	-rowSpacing 5
+		-columnAttach "both" 5
+		-columnWidth 300
+		FAOtop;
+
+	text		-label "animation source"
+			sourcelabel;
+
+	formLayout	-numberOfDivisions 4
+			FAOsrc;
+	
+	radioCollection fao_sourceMode;
+
+	radioButton	-label "selected object"
+			fao_useSelected;
+	
+	radioButton	-label "specified:"
+			fao_useSpecified;
+
+	textField	fao_sourceObject;
+
+	formLayout	-edit
+			-attachForm fao_useSelected "top" 5
+			-attachForm fao_useSelected "left" 5
+			-attachControl fao_useSpecified "top"  5 fao_useSelected
+			-attachForm fao_useSpecified "left" 5
+			-attachForm fao_sourceObject "right" 5
+			-attachForm fao_sourceObject "bottom" 0
+			-attachControl fao_sourceObject "left"  5 fao_useSpecified
+			FAOsrc;
+
+	setParent	-u;
+
+	separator	-style "in" s1;
+
+	text		-label "use curves from:"
+			curvelabel;
+	
+	formLayout	-numberOfDivisions 4
+			FAOcrv;
+
+	radioCollection fao_curveSource;
+
+	radioButton	-label "selected object"
+			fao_selectedOnly;
+
+	radioButton	-label	"selected limb"
+			fao_selectedLimb;
+
+	radioButton	-label "this attribute only:"
+			fao_specifiedAttrib;
+
+
+	textField	fao_sourceAttrib;
+
+	formLayout	-edit
+			-attachForm fao_selectedOnly "top" 5
+			-attachForm fao_selectedOnly "left" 5
+			-attachControl fao_selectedLimb "top"  5 fao_selectedOnly
+			-attachForm fao_selectedLimb "left" 5
+			-attachControl fao_specifiedAttrib "top"  5 fao_selectedLimb
+			-attachForm fao_specifiedAttrib "left" 5
+			-attachForm fao_sourceAttrib "right" 5
+			-attachForm fao_sourceAttrib "bottom" 0
+			-attachControl fao_sourceAttrib "left"  5 fao_specifiedAttrib
+			FAOcrv;
+	
+	setParent	-u; setParent -u;
+
+	separator	-style "in" s2;
+
+	text		-label "copy keys from:" ar;
+
+	formLayout	-numberOfDivisions 5
+			FAOanim;
+
+	radioCollection fao_animationRange;
+
+	radioButton	-label "animation range"
+			fao_useAnimRange;
+
+	radioButton	-label "whole curves"
+			fao_useAnimCurve;	
+
+	radioButton	-label "specified frames:"
+			fao_setTimeRange;
+	
+	text		-label "to" 
+			toLabel;
+
+	intField	-width 72
+			fao_timeStart;
+
+	intField	-width 72
+			fao_timeEnd;
+
+	formLayout	-edit
+			-attachForm fao_useAnimRange "top" 5
+			-attachForm fao_useAnimRange "left" 5
+			-attachControl fao_useAnimCurve "top"  5 fao_useAnimRange
+			-attachForm fao_useAnimCurve "left" 5
+			-attachControl fao_setTimeRange "top"  5 fao_useAnimCurve
+			-attachForm fao_setTimeRange "left" 5
+			-attachForm fao_timeEnd "right" 5
+			-attachForm fao_timeStart "bottom" 0
+			-attachControl fao_timeStart "left"  5 fao_setTimeRange
+			-attachForm toLabel "bottom" 0 
+			-attachControl toLabel "left"  5 fao_timeStart
+			-attachForm fao_timeEnd "bottom" 0 
+			-attachControl fao_timeEnd "left"  5 toLabel
+
+			FAOanim;
+	
+	setParent	-u; setParent -u;
+
+	separator	-style "in" s3;	
+	
+	rowLayout	-width 256
+			-nc 2
+			-cw2 128 128
+			-co2 0 0
+			-ct2 "right"  "right" 
+			pairLayout;
+
+	floatFieldGrp	-label "time offset:"
+			-width 128
+			-cw2 90 38
+			-precision 2
+			fao_timeOffset;
+
+	floatFieldGrp	-label "value offset:"
+			-width 128
+			-cw2 90 38
+			-precision 2
+			fao_valueOffset;
+
+	setParent	-u;
+
+	separator	-style "in" s4;
+
+	text		-label "cycle method" s5;
+
+	radioButtonGrp	-numberOfRadioButtons 4
+			-label1 "cycle"
+			-label2 "offset"
+			-label3 "oscillate"
+			-label4 "none"
+			-cw4 72 72 72 72
+			-ct4 "right" "right" "right" "right"
+			fao_cycleType;
+	
+	separator	-style "in" s6;
+
+	rowLayout	-nc 3 
+			-cw3 100 100 100
+			-ct3 "both" "both" "both"
+			-co3 9	9 9
+			tripleLayout;
+
+	button		-label "Save"
+			-al "center"
+			-c "saveFlipAnimValues ()"
+			saveOnlyButton;
+
+	button		-label "Execute"
+			-al "center"
+			goButton;
+	
+	button		-label "Cancel"
+			-al "center"
+			-command "deleteUI flipAnimOptions"
+			cancelButton;
+
+
+
+
+showWindow flipAnimOptions;
+}
+
+global proc int flipAnim (string $argv[])
+{
+return 0;
+}

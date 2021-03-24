@@ -1,0 +1,27 @@
+// just a simple interface to the smdRead function with a file browser dialog
+
+global proc string wcImport()
+{
+	global int $importNumber = 0;	// Number of the current backup file
+	string $fileNamespace = "wcImport" + $importNumber;
+
+	string $filename = `fileDialog -dm "*.dxf"`;
+
+	pv_performAction $filename "Best Guess";
+	file -import -type "DXF" -namespace $fileNamespace $filename;
+
+	string $selectionString = $fileNamespace + ":*"; 
+	select $selectionString;
+
+	scale -a 0.3937 0.3937 0.3937;
+	rotate -ws -90 180 0;
+
+	setAttr "perspShape.farClipPlane" 1000000;
+	setAttr "sideShape.farClipPlane" 1000000;
+	setAttr "frontShape.farClipPlane" 1000000;
+	setAttr "topShape.farClipPlane" 1000000;
+
+	$importNumber = $importNumber + 1;
+
+	return $filename;
+}

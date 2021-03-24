@@ -1,0 +1,19 @@
+
+  global proc  cameraReset()
+{
+  string $camera;
+
+  // First get the panel that currently has focus
+  string $panel = `getPanel -wf`;
+
+  // Compare the panel's type to confirm it is a "modelPanel"
+  if ( "modelPanel" == `getPanel -to $panel` )
+  {
+    // Get the name of the camera using the ‘modelEditor’ command
+	$camera = `modelEditor -q -camera $panel`; 
+	viewSet -home $camera;
+  }
+
+}
+
+ 

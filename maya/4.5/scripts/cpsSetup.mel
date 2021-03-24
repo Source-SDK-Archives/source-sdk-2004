@@ -1,0 +1,252 @@
+/* cpsSetup.mel
+
+This script may be freely distributed. Modify at your own risk.
+
+Author: Dirk Bialluch <DirkBi@Software2000.de>
+
+Creation date:	20.01.2001
+Last update:	21.06.2001
+
+Description
+	Execute this script to create all necessary Shelf Buttons for the Connect Poly Shape script.
+*/
+
+// Confirm Dialog
+proc string cpss_confirmDialog( string $message )
+{
+	return ( `confirmDialog
+		-title "Connect Poly Shape Setup Failure"
+		-message $message
+		-button "OK"` );
+}
+
+global proc cpsSetup()
+{
+	int $debugVersion = 0;
+
+	if( ( `window -exists cpss_ui` ) == true )
+		deleteUI cpss_ui;
+
+	window
+		-title "Connect Poly Shape V3.0 - Setup"
+		-sizeable 0
+		-minimizeButton 0
+		-maximizeButton 0
+		cpss_ui;
+		columnLayout -adjustableColumn 1;
+			separator
+				-style none
+				-h 10;
+			text
+				-align "left"
+				cpss_text;
+			separator
+				-style none
+				-h 10;
+			progressBar
+				-imp 0
+				cpss_progressBar;
+			symbolButton -manage 0 cpss_image;
+
+	window -e -wh 400 100 cpss_ui;
+
+	showWindow cpss_ui;
+
+	text -e -label "Test" cpss_text;
+
+	string $scripts[] = {
+		"connectPolyShape.mel",
+		"cpsControl.mel",
+		"cpsToolbox.mel",
+		"cpsSnapVertices.mel",
+		"cpsSetFaceLimit.mel",
+		"cpsHelp.mel" };
+
+	string $icons[] = {
+		"connectPolyShape.xpm",
+		"cpsControl.xpm",
+		"cpsToolbox.xpm",
+		"cpsEmpty.xpm",
+		"cpscConnectPolyShape.xpm",
+		"cpscConnectPolyShapeOptions.xpm",
+		"cpscConstrainBorder.xpm",
+		"cpscConstrainInside.xpm",
+		"cpscConstrainNone.xpm",
+		"cpscConvertEdge.xpm",
+		"cpscConvertFace.xpm",
+		"cpscConvertVertex.xpm",
+		"cpscDecreaseSubdivisions.xpm",
+		"cpscDeleteHistory.xpm",
+		"cpscDeleteResult.xpm",
+		"cpscDisconnectPolyShape.xpm",
+		"cpscGrowSelection.xpm",
+		"cpscIncreaseSubdivisions.xpm",
+		"cpscMergeLayer.xpm",
+		"cpscMergeLayerMode.xpm",
+		"cpscSelectEdge.xpm",
+		"cpscSelectFace.xpm",
+		"cpscSelectOriginal.xpm",
+		"cpscSelectResult.xpm",
+		"cpscSelectVertex.xpm",
+		"cpscShrinkSelection.xpm",
+		"cpscSnapVertices.xpm",
+		"cpscToggleBackfaceCulling.xpm",
+		"cpscToggleDGEvalMode.xpm",
+		"cpscToggleDisplayAffected.xpm",
+		"cpscToggleEditable.xpm",
+		"cpscToggleHeadUpDisplay.xpm",
+		"cpscToggleIsolateSelect.xpm",
+		"cpscToggleKeepFacesTogether.xpm",
+		"cpscToggleMirrorAndStitchNode.xpm",
+		"cpscToggleShading.xpm",
+		"cpscToggleSmoothNode.xpm",
+		"cpscToggleSoftEdgeNode.xpm",
+		"cpscToggleTriangulationNode.xpm",
+		"cpscToggleVisibility.xpm",
+		"cpscToggleWireOnShaded.xpm",
+		"cpscToggleXray.xpm",
+		"cpscToggleXrayPerObject.xpm",
+		"cpscToolbox.xpm" };
+
+	string $missingScripts[];
+	string $missingIcons[];
+
+	int $totalFiles = size( $scripts ) + size( $icons );
+
+	// check if all scripts exist
+	for( $sCnt = 0; $sCnt < size( $scripts ); $sCnt++ )
+	{
+		if( !`exists $scripts[$sCnt]` )
+			$missingScripts[size( $missingScripts )] = $scripts[$sCnt];
+
+		text -e -label ( "Checking file (" + ( $sCnt + 1 ) + " / " +  $totalFiles + "): " + $scripts[$sCnt] ) cpss_text;
+		progressBar -e -pr ( ( $sCnt + 1 ) * 100 / $totalFiles ) cpss_progressBar;
+	}
+
+	// check if all icons exist
+	for( $iCnt = 0; $iCnt < size( $icons ); $iCnt++ )
+	{
+		string $result = catch( `symbolButton -e -image $icons[$iCnt] cpss_image` );
+		if( $result )
+			$missingIcons[size( $missingIcons )] = $icons[$iCnt];
+
+		text -e -label ( "Checking file (" + ( $sCnt + $iCnt + 1 ) + " / " +  $totalFiles + "): " + $icons[$iCnt] ) cpss_text;
+		progressBar -e -pr ( ( $sCnt + $iCnt + 1 ) * 100 / $totalFiles ) cpss_progressBar;
+	}
+
+	deleteUI cpss_ui;
+
+	// check if all icons exist
+	if( !size( $missingScripts ) && !size( $missingIcons ) )
+	{
+		// create shelf button on current active shelf
+		global string $gShelfTopLevel;
+		if( `tabLayout -exists $gShelfTopLevel` )
+		{
+			string $buttonList[] = {
+				"connectPolyShape.xpm",	// image
+				"Connect Poly Shape",	// annotation
+				"if( `window -q -exists cps_ui` )" +
+				"{" +
+					"if( `window -q -iconify cps_ui` )" +
+						"window -e -iconify 0 cps_ui;" +
+					"else if( !`window -q -visible cps_ui` )" +
+						"window -e -visible 1 cps_ui;" +
+					"else " +
+						"deleteUI cps_ui;" +
+				"}" +
+				"else " +
+					"connectPolyShape;", // command
+				"source connectPolyShape.mel; source cpsHelp.mel; source cpsControl.mel; source cpsToolbox.mel; connectPolyShape", // debug version command
+
+				"cpsControl.xpm",
+				"CPS Control",
+				"if( `window -q -exists cpsc_ui` )" +
+				"{" +
+					"if( `window -q -iconify cpsc_ui` )" +
+						"window -e -iconify 0 cpsc_ui;" +
+					"else if( !`window -q -visible cpsc_ui` )" +
+						"window -e -visible 1 cpsc_ui;" +
+					"else " +
+						"deleteUI cpsc_ui;" +
+				"}" +
+				"else " +
+					"cpsControl;",
+				"source connectPolyShape.mel; source cpsHelp.mel; source cpsControl.mel; source cpsToolbox.mel; cpsControl",
+
+				"cpsToolbox.xpm",
+				"CPS Toolbox",
+				"if( `window -q -exists cpst_ui` )" +
+				"{" +
+					"if( `window -q -iconify cpst_ui` )" +
+						"window -e -iconify 0 cpst_ui;" +
+					"else if( !`window -q -visible cpst_ui` )" +
+						"window -e -visible 1 cpst_ui;" +
+					"else " +
+						"deleteUI cpst_ui;" +
+				"}" +
+				"else " +
+					"cpsToolbox;",
+				"source connectPolyShape.mel; source cpsHelp.mel; source cpsControl.mel; source cpsToolbox.mel; cpsToolbox" };
+
+			string $selTab = ( $gShelfTopLevel + "|" + `tabLayout -q -selectTab $gShelfTopLevel` );
+			setParent $selTab;
+			string $oldButtonList[] = `shelfLayout -q -childArray $selTab`;
+			for( $cnt = 0; $cnt < size( $oldButtonList ); $cnt++ )
+				$oldButtonList[$cnt] = $selTab + "|" + $oldButtonList[$cnt];
+
+			for( $cnt = 0; $cnt < size( $buttonList ) / 4; $cnt++ )
+			{
+				// remove existing button based on annotation
+				for( $oCnt = 0; $oCnt < size( $oldButtonList ); $oCnt++ )
+					if( `shelfButton -exists $oldButtonList[$oCnt]` )
+						if( `shelfButton -q -annotation $oldButtonList[$oCnt]` == $buttonList[$cnt * 4 + 1] )
+							deleteUI ( $oldButtonList[$oCnt] );
+
+				if( !$debugVersion )
+					shelfButton
+						-image1 $buttonList[$cnt * 4]
+						-annotation $buttonList[$cnt * 4 + 1]
+						-label $buttonList[$cnt * 4 + 1]
+						-command $buttonList[$cnt * 4 + 2];
+				else
+					shelfButton
+						-image1 $buttonList[$cnt * 4]
+						-annotation $buttonList[$cnt * 4 + 1]
+						-label $buttonList[$cnt * 4 + 1]
+						-command $buttonList[$cnt * 4 + 3]; // use debug command
+			}
+		}
+		else
+			cpss_confirmDialog "Connect Poly Shape installation failure.\n\nShelf not found to install Connect Poly Shape toolset.";
+	}
+	else
+	{
+		string $errorMessage;
+
+		if( size( $missingScripts ) )
+		{
+			$errorMessage += "\nThe following MEL Scripts are missing:\n";
+			for( $cnt = 0; $cnt < size( $missingScripts ); $cnt++ )
+				$errorMessage += "   " + $missingScripts[$cnt] + "\n";
+		}
+		if( size( $missingIcons ) )
+		{
+			$errorMessage += "\nThe following Icons are missing:\n";
+			for( $cnt = 0; $cnt < size( $missingIcons ); $cnt++ )
+				$errorMessage += "   " + $missingIcons[$cnt] + "\n";
+		}
+
+		$errorMessage += "\nPlease make sure to copy all files to their respective location." +
+				 "\n\nMEL script files must be copied to:\n   " + `internalVar -userScriptDir` +
+				 "\n\nXPM icon files must be copied to:\n   " + `internalVar -userBitmapsDir` +
+				 "\n\nWhen checking the proper spelling of file names, please remember Maya" +
+				 "\nhandles files case sensitive.";
+
+		print "Installation failure\n";
+
+		cpss_confirmDialog $errorMessage;
+	}
+}
+
+// end of script

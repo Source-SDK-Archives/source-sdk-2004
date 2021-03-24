@@ -1,0 +1,5 @@
+"UnlitGeneric"
+{
+	// Original shader: BaseTimesVertexColor
+	"$basetexture" "hlmv/gray"
+}

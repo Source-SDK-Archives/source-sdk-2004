@@ -1,0 +1,41 @@
+global proc smdCreateBlindDataTemplate ()
+{
+string $x[] = `ls -type blindDataTemplate "smdWeightMap"`;
+if (`size $x` == 0)
+	{
+	createNode blindDataTemplate -n "blindDataTemplate1";
+		addAttr  -sn "b1" -ln "bone1" -at "long";
+		addAttr  -sn "b2" -ln "bone2" -at "long";
+		addAttr  -sn "b3" -ln "bone3" -at "long";
+		addAttr  -sn "nb" -ln "numBones" -at "long";
+		addAttr  -sn "w1" -ln "weight1" -min 0 -max 1 -at "double";
+		addAttr  -sn "w2" -ln "weight2" -min 0 -max 1 -at "double";
+		addAttr  -sn "w3" -ln "weight3" -min 0 -max 1 -at "double";
+		setAttr ".tid" 9898;
+		setAttr -s 11 ".bdui";
+		setAttr ".bdui[0].bdun" -type "string" "typeTag";
+		setAttr ".bdui[0].bduv" -type "string" "smdWeights";
+		setAttr ".bdui[1].bdun" -type "string" "assocType";
+		setAttr ".bdui[1].bduv" -type "string" "vertex";
+		setAttr ".bdui[3].bdun" -type "string" "freeSet";
+		setAttr ".bdui[3].bduv" -type "string" "1";
+		setAttr ".bdui[4].bdun" -type "string" "dataCount";
+		setAttr ".bdui[4].bduv" -type "string" "7";
+		setAttr ".bdui[5].bdun" -type "string" "weight1";
+		setAttr ".bdui[5].bduv" -type "string" "double";
+		setAttr ".bdui[6].bdun" -type "string" "weight2";
+		setAttr ".bdui[6].bduv" -type "string" "double";
+		setAttr ".bdui[7].bdun" -type "string" "weight3";
+		setAttr ".bdui[7].bduv" -type "string" "double";
+		setAttr ".bdui[8].bdun" -type "string" "bone1";
+		setAttr ".bdui[8].bduv" -type "string" "int";
+		setAttr ".bdui[9].bdun" -type "string" "bone2";
+		setAttr ".bdui[9].bduv" -type "string" "int";
+		setAttr ".bdui[10].bdun" -type "string" "bone3";
+		setAttr ".bdui[10].bduv" -type "string" "int";
+		setAttr ".bdui[11].bdun" -type "string" "numBones";
+		setAttr ".bdui[11].bduv" -type "string" "int";
+	}
+string $x[] = `ls -type blindDataTemplate "smdWeightMap"`;
+if (`size $x` == 0) warning "problem creating smd weight map template";
+}

@@ -1,0 +1,13 @@
+// The launcher runs these commands when it starts up.
+Commands
+{
+	"VersionlessCommands"
+	{
+		// For the first release, their vproject gets set to csmod, which contains the sample maps, models, etc.
+		AddGameDir
+		{
+			Dir			"%basedir%\\cstrike_sample_content"
+			Shortname	"Modify Counter-Strike"
+		}
+	}
+}

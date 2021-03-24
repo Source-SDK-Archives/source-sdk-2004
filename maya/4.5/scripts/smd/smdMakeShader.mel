@@ -1,0 +1,65 @@
+
+// part of the smdImporter
+// makes a simple shading network
+// with a file texture given a name
+// if $getTextures is true, it also prompts
+// for the file texture to associate with 
+// the shader.
+
+global proc string smdMakeShader (string $shaderName, int $getTextures) 
+{	
+	global string $g_smdTexturePath;
+	string $name;
+	// make the shader node (a phong E with 0 hilites, like in the smd exporter)
+	$name = `shadingNode -asShader phongE -name $shaderName`;
+	setAttr ($name + ".roughness") 0;
+	setAttr ($name + ".highlightSize") 0;
+
+	// set up a file node for the file texture
+	string $fileTex = `shadingNode -asTexture file -name ($name + "_file")`;
+	string $place = `shadingNode -asUtility place2dTexture`;
+	connectAttr -f ($place + ".coverage") ($fileTex + ".coverage");
+	connectAttr -f ($place + ".translateFrame") ($fileTex + ".translateFrame");
+	connectAttr -f ($place + ".rotateFrame") ($fileTex + ".rotateFrame");
+	connectAttr -f ($place + ".mirror") ($fileTex + ".mirror");
+	connectAttr -f ($place + ".stagger") ($fileTex + ".stagger");
+	connectAttr -f ($place + ".wrapU") ($fileTex + ".wrapU");
+	connectAttr -f ($place + ".wrapV") ($fileTex + ".wrapV");
+	connectAttr -f ($place + ".repeatUV") ($fileTex + ".repeatUV");
+	connectAttr -f ($place + ".offset") ($fileTex + ".offset");
+	connectAttr -f ($place + ".rotateUV") ($fileTex + ".rotateUV");
+	connectAttr -f ($place + ".noiseUV") ($fileTex + ".noiseUV");
+	connectAttr ($place + ".outUV") ($fileTex + ".uv");
+	
+	// get the texture files as the come up, if desired.
+	if ($getTextures)
+	{
+		print $g_smdTexturePath;
+		// auto-recognize .tga and .bmp files
+		if (`file -q -exists ($g_smdTexturePath + "/" +  $shaderName + ".tga")`)
+			{
+			setAttr -type "string" ($fileTex + ".ftn") ($g_smdTexturePath + "/" + $shaderName + ".tga");
+			}
+		if (`file -q -exists ($g_smdTexturePath + "/" +  $shaderName + ".bmp")`)
+			{
+			setAttr -type "string" ($fileTex + ".ftn") ($g_smdTexturePath + "/" + $shaderName + ".bmp");
+			}
+		
+		string $check = `getAttr ($fileTex + ".ftn")`;
+		print $check;
+		if (`size $check` < 1)
+			{
+			fileBrowserDialog -an "find file texture: " -in $shaderName
+			-m 0 -ft "image"
+			-fc ("AEassignTextureCB " + $fileTex + ".ftn");
+			string $fileTexPath = `getAttr ($fileTex + ".ftn")`;
+			$g_smdTexturePath = `dirname $fileTexPath`;
+			}
+	}
+
+	// connect file to shader, and shader to SG;
+	connectAttr ($fileTex + ".outColor") ($name + ".color");
+	string $SG = `sets -renderable true -noSurfaceShader true -empty -name ($name + "SG")`;
+	connectAttr ($name + ".oc")($SG + ".ss");
+	return $SG;
+}

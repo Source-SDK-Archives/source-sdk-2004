@@ -1,0 +1,157 @@
+autoConnectNonLinear;
+
+// run Time Commands for use in hotkey editors
+
+runTimeCommand
+	-annotation "start Dolly tool"
+	-category "Navigation"
+	-command ("global string $gDollyLastTool;\r\n$gDollyLastTool = `currentCtx`;\r\nsetToolTo dollySuperContext;")
+	-default true
+	dollyOn;
+
+runTimeCommand
+	-annotation "stop dolly Tool"
+	-category "Navigation"
+	-command ("global string $gDollyLastTool;\r\nsetToolTo $gDollyLastTool;\r\nchangeToolIcon;")
+	-default true
+	dollyOff;
+
+runTimeCommand
+	-annotation "set window to left view"
+	-category "Navigation"
+	-command ("forceCamera left false;")
+	-default true
+	LeftView;
+
+runTimeCommand
+	-annotation "set window to left view and force fit"
+	-category "Navigation"
+	-command ("forceCamera left true")
+	-default true
+	LeftViewFit;
+
+runTimeCommand
+	-annotation "set window to right side view"
+	-category "Navigation"
+	-command ("forceCamera right false;")
+	-default true
+	RightView;
+
+runTimeCommand
+	-annotation "set camera to right view and fit"
+	-category "Navigation"
+	-command ("forceCamera right true")
+	-default true
+	RightViewFit;
+
+runTimeCommand
+	-annotation "set camera to top view"
+	-category "Navigation"
+	-command ("forceCamera top false")
+	-default true
+	TopView;
+
+runTimeCommand
+	-annotation "set camera to top view and fit"
+	-category "Navigation"
+	-command ("forceCamera top true")
+	-default true
+	TopViewFit;
+
+runTimeCommand
+	-annotation "set camera to bottom view"
+	-category "Navigation"
+	-command ("forceCamera bottom false\r\n")
+	-default true
+	BottomView;
+
+runTimeCommand
+	-annotation "set camera to bottom view and fit"
+	-category "Navigation"
+	-command ("forceCamera bottom true")
+	-default true
+	BottomViewFit;
+
+runTimeCommand
+	-annotation "set camera to front"
+	-category "Navigation"
+	-command ("forceCamera front false;\r\n")
+	-default true
+	FrontView;
+
+runTimeCommand
+	-annotation "set camera to front and fit"
+	-category "Navigation"
+	-command ("forceCamera front true")
+	-default true
+	FrontViewFit;
+
+runTimeCommand
+	-annotation "set camera to back"
+	-category "Navigation"
+	-command ("forceCamera back false;")
+	-default true
+	BackView;
+
+runTimeCommand
+	-annotation "set camera to back and fit"
+	-category "Navigation"
+	-command ("forceCamera back true")
+	-default true
+	BackViewFit;
+
+runTimeCommand
+	-annotation "compile QC file"
+	-category "Valve"
+	-command ("compileQC \"\" 1")
+	-default true
+	compileQCFile;
+
+// these commands work with the character rig for the commando
+// THEY WANT TO BE ERASED WHEN THE COMMANDO IS RE-RIGGED!
+
+runTimeCommand
+	-annotation "pose selected limb in IK local space"
+	-category "Valve"
+	-command ("tf_poseIK -s 0")
+	-default true
+	poseLocal;
+runTimeCommand
+	-annotation "pose selected limb in IK world space"
+	-category "Valve"
+	-command ("tf_poseIK -s 1")
+	-default true
+	poseWorld;
+runTimeCommand 
+	-annotation "pose selected limb with FK"
+	-category "Valve"
+	-command ("tf_poseFK -s")
+	-default true
+	poseFK;
+runTimeCommand
+	-annotation "set a local space IK key on selected limb"
+	-category "Valve"
+	-command "tf_setKey -s 1"
+	-default true
+	keyLocal;
+runTimeCommand
+	-annotation "set a world space IK key on selected limb"
+	-category "Valve"
+	-command "tf_setKey -s 2"
+	-default true
+	keyWorld;
+runTimeCommand
+	-annotation "set an FK key on selected limb"
+	-category "Valve"
+	-command "tf_setKey -s 0"
+	-default true
+	keyFK;
+runTimeCommand
+	-annotation "Toggle the IK solver on selected limb"
+	-category "Valve"
+	-command "tf_setIKState -s (!`tf_getIKState -s`)"
+	-default true
+	toggleLimb;
+
+
+print "run time commands loaded";

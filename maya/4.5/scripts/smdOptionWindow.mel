@@ -1,0 +1,89 @@
+global proc int isSmdInfoDefined()
+	{
+	source "fixup";
+
+	string $check[] = `ls smdInfo`;
+	if (`size $check` == 0)
+		return 0;
+
+	smdInfoFixup;
+
+	return 1;
+	}
+
+
+proc smdMakeScriptNode ()
+	{
+	// is there one already?
+	string $check[] = `ls smdInfo`;
+	if ( !isSmdInfoDefined() )
+		{
+		scriptNode -st 2 -name "smdInfo";
+		addAttr -ln seperateBodyGroup -at bool  smdInfo;
+		addAttr -ln smdType -at "enum" -en "Animation:Reference:"  smdInfo;
+		}
+	}
+
+
+global proc smdOptionWindow ()
+	{
+	source "fixup";
+
+	smdMakeScriptNode;
+	
+	int $oldSmdType;
+	int $oldSeperateBodyGroup;
+
+	$oldSmdType = `getAttr smdInfo.smdType`;
+	$oldSeperateBodyGroup = `getAttr smdInfo.seperateBodyGroup`;
+	
+	string $fileName = `file -q -sceneName`;
+	string $destination;
+	$destination = `substitute "/[Ss][Cc][Ee][Nn][Ee][Ss]/" $fileName "/smd/"`;
+	$destination = `substitute "\\.[Mm][AaBb]$" $destination ".smd"`;
+	$destination = "Exporting to: " + $destination;
+
+	if (`window -exists smdOptWin` == 1)
+		{
+		delete smdOptWin;
+		}
+
+	window -title "SMD file options"
+
+		-w 400
+		-h 200
+		-s false
+		-mnb false
+		-mxb false
+		smdOptWin;
+
+	
+	columnLayout topLayout;
+		columnLayout -cal "left" -cat "both" 10 -cw 400 -rs 9;
+			text -w 380 -label $destination  -align "center";
+		setParent topLayout;
+		columnLayout -cal "left" -cat "both" 70 -cw 400 -rs 9;
+			
+			checkBox -label "Export as reference" 
+				-value `getAttr smdInfo.smdType`
+				-onCommand "setAttr smdInfo.smdType 1"
+				-offCommand "setAttr smdInfo.smdType 0"
+				;
+			checkBox -label "Export each model as separate body group" 
+				-value `getAttr smdInfo.seperateBodyGroup` 
+				-onCommand "setAttr smdInfo.seperateBodyGroup 1"
+				-offCommand "setAttr smdInfo.seperateBodyGroup 0"
+				;
+			text -label "" ;
+
+	rowLayout -numberOfColumns 3 
+			-height 32
+			-cw3 128 128 128
+			-ct3 "both" "both" "both"
+			-co3 6 6 6
+ 			-p topLayout;
+		button -label "OK settings" -c "deleteUI -window smdOptWin" -align "center";
+		button -label "Export now" -c "deleteUI -window smdOptWin; smdExport( `getAttr smdInfo.smdType`, `getAttr smdInfo.seperateBodyGroup` )" -align "center";
+		button -label "Cancel" -c "setAttr setAttr smdInfo.seperateBodyGroup $oldSeperateBodyGroup; setAttr smdInfo.smdType $oldSmdType; deleteUI -window smdOptWin" -align "center";
+	showWindow smdOptWin;
+	};

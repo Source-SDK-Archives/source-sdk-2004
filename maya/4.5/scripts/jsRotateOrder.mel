@@ -1,0 +1,104 @@
+// Copyright (C) 1997-2001 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+//	SCRIPT:	jsRotateOrder	
+//	AUTHOR:	Jason Schleifer
+//			oy_vay@hotmail.com
+//	DATE:	July 18, 2001	
+//
+//	DESCRIPTION:	Modify the rotation order for the selected
+//					objects.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+
+
+global proc jsRotateOrder ()
+{
+	// create the window
+	$win = "jsRotateOrderWin";
+
+	if (`window -exists $win`)
+		deleteUI $win;
+
+	jsCreateRotateOrderWin $win;
+
+	showWindow $win;
+}
+
+global proc jsCreateRotateOrderWin ( string $win)
+{
+	window -t "jsRotateOrderWindow" $win;
+
+	columnLayout;
+		
+	string $rotateOrder = `optionMenuGrp -label "Rotate Order" jsRotateOrderOMG`;
+		menuItem -label "xyz";
+		menuItem -label "yzx";
+		menuItem -label "zxy";
+		menuItem -label "xzy";
+		menuItem -label "yxz";
+		menuItem -label "zyx";
+    
+	
+	rowColumnLayout -nc 2;
+		button -l "Apply" -c "jsApplyRotateOrder";
+		button -l "Cancel" -c ("deleteUI " + $win);
+	
+}
+
+global proc jsApplyRotateOrder ()
+{
+	// apply the rotation order to the selected objects
+	string $objs[0];
+	$objs = `ls -sl`;
+
+	$size = size($objs);
+	if (size($objs) > 0)
+	{
+		// Or, to use the progress bar in the main window ...
+
+		global string $gMainProgressBar; // This is defined on maya startup
+
+		$amount = 0;
+      progressWindow
+          -title "Changing Orientation"
+          -progress $amount
+          -status "Chaging Orientations: ..."
+          -isInterruptable true;
+
+		int $newRO = `optionMenuGrp -q -sl jsRotateOrderOMG`;
+		$newRO = $newRO-1;
+	
+		
+		for ($ob in $objs)
+		{
+			if(`progressWindow -query -isCancelled`)
+				break;
+			$amount++;
+			progressWindow -edit
+				-status ("Changing Joint Orientation: " + $ob)
+				-progress $amount ;
+			setAttr ($ob + ".rotateOrder") $newRO;
+		}
+    
+		progressWindow -edit
+    		-endProgress;
+
+	}
+}

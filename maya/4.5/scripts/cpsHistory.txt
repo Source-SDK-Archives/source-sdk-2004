@@ -1,0 +1,184 @@
+Connect Poly Shape V3.0 - HISTORY
+
+Creation date:	28.10.1999
+Last update:	23.06.2001
+
+History
+	V1.1
+		FIXED
+			-bug regarding multiple selection and attribute connection removed
+		ENHANCED
+			-modifications to the original geometry will now be taken into account
+		NEW
+			-set fixed world space position
+			-mirror about defined axis
+	V1.2
+		NEW
+			-create unshaded layer for original geometry
+	V1.3
+		ENHANCED
+			-UI layout rearranged
+
+	V1.31
+		FIXED
+			-UI frame layout height will now be recognized by the SGI version
+
+	V1.32
+		ENHANCED
+			-polySmooth tesselation on the fly will be disabled automatically, when
+			 using Maya 3.0 or higher.
+	V1.4
+		FIXED
+			-non zero vertex tweaks will now be handled properly (thanks to Bryan)
+		NEW
+			-reset tool
+			-help window
+	V1.41
+		FIXED
+			-fixed a problem with duplicated polygon shape nodes
+		NEW
+			-create reference layer for resulting geometry
+	V1.42
+		FIXED
+			-triangulate tool will now work properly with Maya 3.0
+	V1.43
+		CHANGED
+			-zero vertex tweaks checkbox removed
+		NEW
+			-set smooth/triangulate node order
+			-check for non zero vertex tweaks and display a requester
+			 (continue, zero vertex tweaks, skip, cancel)
+	V1.5
+		NEW
+			-soften/harden edges
+			-mirror and stitch
+	V1.51
+		NEW
+			-make original geometry render invisible
+			-adjustable merge vertex distance
+			-set face limit for resulting geometry
+			-show warning, if face limit is exceeded
+	V1.52
+		FIXED
+			-duplicated shape names are now handled properly
+			-mirror and stitch axis UI value will no be saved
+	V1.53
+		NEW
+			-switch resulting geometry render visible
+	V1.6
+		NEW
+			-control smooth node attributes from original transform node
+			-annotations added
+			-Maya version check removed
+	V2.0
+		FIXED
+			-values for Subdivisions, Continuity and Keep Border will now be set
+			 even if attributes already exist
+		CHANGED
+			-display layer are now always created
+			-dynamic attributes are now deleted from the resulting transform node
+		NEW
+			-mirror and stitch now works on up to 3 axes simultaneously
+			-original and resulting geometry are now connected via a new attribute
+			-connectPolyShape can now be executed without UI showing up via CPS Control
+			-cpsSetup script to install CPS toolset to shelf
+			-set color for original display layer
+			-added CPS Control window
+				-toggle shading
+				-toggle editable
+				-increase subdivisions
+				-decrease subdivisions
+				-delete history
+				-disconnect poly shape
+				-merge layer nodes
+				-toggle layer merge mode
+				-select original geometry (from resulting)
+				-select resulting geometry (from original)
+				-delete resulting geometry
+				-toggle wireframe on shaded
+				-toggle poly count
+				-toggle x-ray
+				-toggle x-ray per object
+				-call Connect Poly Shape
+				-call Connect Poly Shape Window
+				-call CPS Toolbox
+			-added CPS Toolbox
+				-edit shelf buttons
+				-call double click command with ALT + RMB
+	V2.1
+		FIXED
+			-cpsSetup will now set the shelf button label
+		NEW
+			-added an isolate select toggle button to the CPS Control window
+	V2.2
+		CHANGED
+			-if mirror and stitch is enabled, transform attributes will not be connected and existing
+			 attributes will be switched non keyable and locked
+		NEW
+			-new CPS Control button to switch dependency graph evaluation mode (drag, demand, release)
+			-added Mirror Plane option to Mirror and Stitch tool (origin, bounding box, best guess)
+			-added Snap Border Vertices tool to align points to the mirror axis
+	V2.3
+		FIXED
+			-Edit->Reset Settings tool fixed
+		CHANGED
+			-"Toggle XRay Per Object" will now operate on all selected objects
+			-"Disconnect Poly Shape" and "Increase/Decrease Subdivisions" will now operate on both
+			 original and resulting geometry
+			-transform attributes will no longer be locked and toggled non keyable, if the mirror and
+			 stitch option is used
+			-CPS Control icons reorganized
+		NEW
+			-new transform option, to connect the original world matrix to the resulting geometry
+			-CPS tools now also operate on highlighted selection, so you do not have to select the
+			 object node before using a tool
+	V3.0
+		FIXED
+			-CPS Control "Heads Up Display" fixed for Maya 4.0
+			-CPS node network creation had to be rewritten for Maya 4.0
+			-Snap Border Vertices tool will now work, if World Transformation mode is used
+			-Mirror & Stitch tool will now handle objects with DAG tranformations properly
+			-several "Merge Layer" tool problems fixed
+			-all custom CPS attributes are now removed, if CPS geometry is disconnected
+		CHANGED
+			-CPS Toolbox "Overlay Label" renamed to "Icon Name"
+			-convert selection to vertices/edges/faces tools removed from CPS Toolbox
+			-Flip Edge, Create Polygon, Append Polygon and Select Contiguous Edges tools added to CPS Toolbox
+			-Freeze Transformation will now always be applied, if the Mirror & Stitch option is used
+			-script internal help replaced by HTML documentation
+			-terms "original" and "resulting" geometry changed to "base" and "proxy" geometry
+			-CPS layer are now identfied by a custom attribute only and not the layer name itself
+			-CPS display layer are always created and CPS shapes are always assigned to layer
+			-CPS Control RMB menu switch to MMB
+			-CPS Control select proxy/base tools will no longer deselect the current selection, if the right
+			 node type could not be found
+			-moved "Toggle Shading" and "Toggle Editable" from CPS Control Geometry to Layer section
+			-add CPSproxy extension, when CPS proxy geometry is created
+		NEW
+			-toggle vertex/edge/face component selection mode from CPS Control window
+			-convert selection to vertices/edges/faces from CPS Control window
+			-toggle polygon component selection contraint to none/inside/border from CPS Control window.
+			 RMB click the icons to call the polygon selection constaints window.
+			-shrink/grow selection region from CPS Control window
+			-toggle backface culling for selected polyong objects from CPS Control window. RMB click the
+			 icon to choose the backface culling mode or call the custom polygon display option window
+			-CPS Control head up display toggle can now be used to toggle all available displays.
+			 RMB click the icon to choose which displays should be toggled.
+			-RMB click dependency graph evaluation mode icon to call performance settings window
+			-added a CPS Homepage link to the help menu
+			-show/hide CPS Toolbox close button
+			-show/hide CPS Control close button
+			-added RMB "Select Proxy" option to CPS Control "Toggle Isolate Select" tool
+			-added RMB "Rename CPS Display Layer" option to CPS Control "Merge Layer" tool
+			-added RMB "Reset CPS Control Settings" function to CPS Control
+			-added CPS heads up display
+			-added node state toggle for subdivision, triangulation, mirror & stitch and soft edge to
+			 CPS Control window
+			-added All On/All Off DAG transform connection toggle to CPS option window
+			-window layout buttons added to CPS Control and CPS Toolbox
+			-stitch toggle option added to CPS option window's Mirror & Stitch section
+			-cpsSetup does output the directory names, where missing files must be copied to
+			-softenEdge node angle attribute is now accessible from base DAG node
+			-progress bar added to cpsSetup
+			-toggle "Keep Faces Together" from CPS control window
+			-toggle proxy visibility from CPS control window

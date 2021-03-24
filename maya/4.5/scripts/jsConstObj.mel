@@ -1,0 +1,133 @@
+// Copyright (C) 1997-2001 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+//	SCRIPT:	jsConstObj.mel
+//	AUTHOR:	Jason Schleifer
+//			oy_vay@hotmail.com
+//	DATE:	July 16, 2001	
+//
+//	DESCRIPTION:	This script takes 2 or more selected objects.
+//					The first object(s) selected are the TARGETS
+//					for the last object selected.  
+//					This will create a point and orient constraint
+//					for the given object to the other objects,
+//					however, it will do so by duplicating the object
+//					and using that duplicate to make the constraint
+//					so as not to cause the object to jump.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+
+
+//-----------------------------------------------------------------//
+//	PROC:	jsConstObj
+//	
+//-----------------------------------------------------------------//
+
+global proc jsConstObj ()
+{
+	// get a list of the selected objects
+	string $selected[0];
+	$selected = `ls -sl`;
+
+	// make sure the size is correct.. we must have 2 or more objects selected.
+
+	if (size($selected) < 2)
+	{
+		error ("You don't have enough objects selected.\n");
+	}
+
+	// get the last selected object
+	string $targets[0];
+	string $constObj;
+
+	$constObj = $selected[(size($selected)-1)];
+	for ($x = 0; $x < (size($selected)-1); $x++)
+	{
+		$targets[$x] = $selected[$x];
+	}
+	
+	// now make the constraint
+	string $cmd = ("jsMakeConstObj " + $constObj + " \"");
+	for ($target in $targets)
+	{
+		$cmd += ($target +" ");
+	}
+	$cmd += "\"";
+	
+	evalEcho $cmd;
+	
+}
+//-----------------------------------------------------------------//
+//	PROC:	jsMakeConstObj
+//	
+//	IN:		string $constObj;   // the object getting constrained
+//			string $targetStr;	// a string of target objects
+//-----------------------------------------------------------------//
+
+global proc jsMakeConstObj ( string $constObj, string $targetStr)
+{
+	string $targets[0];
+	// break apart $targetStr into an array
+	tokenize ($targetStr, " ", $targets);
+
+	// now for each target, we're going to make an attribute on $constObj 
+	// to control the constraint, and we're going to make the constraint
+	// $tc is the target count
+	$tc = 0;
+	for ($target in $targets)
+	{
+		// duplicate $constObj
+		$dup = `duplicate $constObj`;
+		
+		// delete the children of $dup
+		delete `listRelatives -f -c $dup[0]`;
+
+		// rename $dup[0] to somethign which will make sense for the target
+
+		// get good names for the target and constraint object
+		$niceTarget = `endName $target`;
+		$niceObj 	= `endName $constObj`;	
+
+		$const = `rename ($dup[0]) ($niceTarget + "_"+$niceObj)`;
+
+		// make the constraint;
+		select $const $constObj;
+		$cmd = ("pointConstraint ");
+		$pc = `eval $cmd`;
+		$cmd = ("orientConstraint ");
+		$oc = `eval $cmd`;
+
+		// add the attribute
+		if (!`attributeQuery -exists -node $constObj $niceTarget`)
+			addAttr -min 0 -max 1 -dv 1 -ln ($niceTarget) -at double $constObj;
+		setAttr -k 1 ($constObj + "." + $niceTarget);
+
+		// now connect the attribute to the point and orient constraint
+		connectAttr -f ($constObj + "." + $niceTarget) ($pc[0] + "." + $const + "W"+$tc);
+		connectAttr -f ($constObj + "." + $niceTarget) ($oc[0] + "." + $const + "W"+$tc);
+		
+		// now parent $const to $target
+		jsUnlockTransforms $const;
+		hide $const;
+		parent $const $target;
+
+		$tc++;
+	}	
+	
+}

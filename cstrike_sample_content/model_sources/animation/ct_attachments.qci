@@ -1,0 +1,14 @@
+$attachment "grenade0" "ValveBiped.Bip01_Pelvis" 7.00 1.50 1.00 rotate 0 -0 -80
+$attachment "grenade1" "ValveBiped.Bip01_Pelvis" 7.50 1.50 -3.50 rotate 0 -0 -80
+$attachment "grenade2" "ValveBiped.Bip01_Pelvis" -7.00 1.50 1.00 rotate 0 -0 -80
+$attachment "grenade3" "ValveBiped.Bip01_Pelvis" -7.50 1.50 -3.50 rotate 0 -0 -80
+
+$attachment "pistol" "ValveBiped.Bip01_R_Thigh" 8.00 1.00 -3.50 rotate -0 -0 0
+$attachment "primary" "ValveBiped.Bip01_Spine2" 0.00 -4.00 -2.00 rotate 0 -0 -0
+$attachment "defusekit" "ValveBiped.Bip01_pelvis" 0.00 1.50 -8.00 rotate -90 0 -90
+
+$attachment "lfoot" "valvebiped.bip01_l_foot" 0.00 5.00 0.00 rotate 0 0 0
+$attachment "rfoot" "valvebiped.bip01_r_foot" 0.00 5.00 0.00 rotate 0 0 0
+
+$attachment "muzzle_flash" "valvebiped.bip01_l_hand" 0.00 0.00 0.00 rotate 0 0 0
+

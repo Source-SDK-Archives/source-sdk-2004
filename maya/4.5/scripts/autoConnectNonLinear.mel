@@ -1,0 +1,46 @@
+global proc autoConnectNonLinear ()
+
+	{
+
+	global int $connectNonLinearSJ;
+
+	$connectNonLinearSJ = `scriptJob -e DagObjectCreated "string $LSA[] = `ls -sl`;connectNonLinearHandle $LSA[0]"`;
+
+	}
+
+
+
+global proc stopConnectingNonLinear () {global int $connectNonLinearSJ; scriptJob -k $connectNonLinearSJ;}
+
+
+
+global proc connectNonLinearHandle (string $handle)
+
+	{
+
+	if (`objExists $handle` == true)
+		{
+		string $connections[] = `listConnections $handle`;
+
+		string $handleType = `objectType $connections[0]`;
+
+		if ($handleType == "nonLinear")
+
+			{
+
+			print "\nAuto-connecting manip handle: ";
+
+			print $handle;
+
+			print "\n";
+
+			string $history = $connections[0];
+
+			setAttr ($handle + ".smd") 7;
+
+			connectAttr ($history + ".message") ($handle + ".sml");
+
+			}
+
+		}
+	}

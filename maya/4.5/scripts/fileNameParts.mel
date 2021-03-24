@@ -1,0 +1,14 @@
+global proc string[] fileNameParts (string $filePath)
+{
+
+string $fileDir = `dirname $filePath`;
+
+int $pathOffset = `size $fileDir`;
+if ($pathOffset > 0) $pathOffset += 1;
+string $fileName = `substring $filePath ($pathOffset +1) 999`;
+
+string $fileParts[];
+tokenize $fileName "." $fileParts;
+string $dir[] = {$fileDir};
+return `stringArrayCatenate  $dir $fileParts`;
+}

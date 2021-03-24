@@ -1,0 +1,155 @@
+proc vssInit( )
+	{
+	global int $g_VSSInitialized;
+
+	if ($g_VSSInitialized == 0)
+		{
+		// Add some common locations to the path
+		string $path = `getenv "PATH"`;
+		if (`match $path "VSS"` != "VSS")
+			{
+			$path += ";C:/Program Files/Microsoft Visual Studio/Common/VSS/win32";
+			putenv "PATH" $path;
+			}
+
+		string $ssuser = `getenv "SSUSER"`;
+		if ($ssuser == "")
+			{
+			string $currentUser = `getenv "USERNAME"`;
+			putenv "SSUSER" $currentUser;
+			}
+
+		string $ssdir = `getenv "SSDIR"`;
+		if ($ssdir == "")
+			{
+			putenv "SSDIR" "\\\\jeeves\\hl2vss";
+			}
+
+		$g_VSSInitialized = 1;
+		}
+	}
+
+
+//-----------------------------------------------------------------------------
+// computes the name of the file in VSS
+//-----------------------------------------------------------------------------
+proc string computeVSSName( string $fileName )
+	{
+	// Create the VSS name for this file...
+	// NOTE: This sucks! It basically forces us to have a particular directory
+	// structure for VSS to work. oh well....
+
+	string $vssName;
+
+	string $models = `match "/[mM][oO][dD][eE][lL][sS]/" $fileName`;
+	tolower( $models );
+	if ( $models == "/models/" )
+		{
+		$vssName = `match "/[^/]*/[mM][oO][dD][eE][lL][sS]/.*$" $fileName`;
+		$vssName = "$" + $vssName;
+		return $vssName;
+		}
+
+	string $materialsrc = `match "/[mM][aA][tT][eE][rR][iI][aA][lL][sS][rR][cC]/" $fileName`;
+	tolower( $materialsrc );
+	if ( $materialsrc == "/materialsrc/" )
+		{
+		$vssName = `match "/[^/]*/[mM][aA][tT][eE][rR][iI][aA][lL][sS][rR][cC]/.*$" $fileName`;
+		$vssName = "$" + $vssName;
+		return $vssName;
+		}
+
+	string $materials = `match "/[mM][aA][tT][eE][rR][iI][aA][lL][sS]/" $fileName`;
+	tolower( $materials );
+	if ( $materials == "/materials/" )
+		{
+		// A little tricky. we need the name of the directory right before the 'materials'
+		$vssName = `match "/[^/]*/[mM][aA][tT][eE][rR][iI][aA][lL][sS]/.*$" $fileName`;
+		$modName = `match "^/[^/]*/" $vssName`;
+		$vssName = "$" + $modName + "release/dev" + $vssName;
+		return $vssName;
+		}
+
+	// Ok, this isn't a file we know how to deal with in source control
+	return "";
+	}
+
+
+global proc string[] vss (string $fileName, string $opt)
+	{
+	vssInit();
+
+	// executes sourcesafe command line from within maya
+	// usage: vss <full file path> <-i | -o>
+	// -i checks in, -o checks out, -a adds
+	// -s in place of file name gives a file dialog box
+	// nb: assumes correct user name set thru SSUSER environment variable
+	// stevet
+
+	$opt = `tolower $opt`;
+	string $vssName;
+	string $output[];
+
+	if ($opt != "-i" && $opt != "-o" && $opt != "-a" && $opt != "-g" && $opt != "-q") 
+		{
+		warning "usage:";
+		warning "\t -o checkout";
+		warning "\t -i checkin";
+		warning "\t -a add";
+		warning "\t -g get latest";
+		warning "\t -q list checked out files";
+		return {""};
+		}
+
+	if (`tolower $fileName` == "-s")
+		{
+		$fileName = `fileDialog`;
+		}
+
+	if (`tolower $fileName` == "-f")
+		{
+		$fileName = `file -q -sn`;
+		}
+
+	if ($fileName == "")
+		{
+		return {""};
+		}
+
+	// Figure out the name of the file in VSS
+	// It may not have one, which means it's a file that doesn't exist in source control
+	$vssName = computeVSSName( $fileName );
+	if ($vssName == "")
+		{
+		return {""};
+		}
+
+	// This is necessary to get the appropriate working dir to show up in VSS
+	// and for the checkout to occur into the appropriate directory
+	string $dir = `dirname $fileName`;
+	chdir $dir;
+
+	// Sorry, you've got to have VSS installed into the default location
+	string $verb = "ss ";
+
+	switch ($opt) 
+		{
+		case "-i":	$verb += "checkin -I- " ; break;
+		case "-o":	$verb += "checkout -I- "; break;
+		case "-a":	$verb += "add -I- "; break;
+		case "-g":	$verb += "get "; break;
+		case "-q":	$verb += "status ";
+		}
+
+	if ($opt != "-q") $verb += $vssName;
+	trace $verb;
+
+	int $pipe = popen( $verb , "r");
+	while ( ! feof ( $pipe ) )
+		{ 
+		$output[size( $output )] = fgetline( $pipe ); 
+		} 
+	pclose( $pipe ); 
+
+	return $output;
+	}

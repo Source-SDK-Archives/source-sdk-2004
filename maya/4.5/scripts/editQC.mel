@@ -1,0 +1,11 @@
+global proc string editQC (string $path)
+{
+if (`size $path` == 0)
+	{
+	$path = `workspace -q -rd`;
+	string $qcFile[] = `getFileList -fs "*.qc" -fld $path`;
+	$path = $path + $qcFile[0];
+	}
+system ("start notepad " + $path);
+return $path;
+}

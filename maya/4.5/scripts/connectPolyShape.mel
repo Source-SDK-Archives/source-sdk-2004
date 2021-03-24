@@ -1,0 +1,1964 @@
+/* connectPolyShape.mel V3.0 - Maya 4.0 and higher
+
+This script may be freely distributed. Modify at your own risk.
+
+Author: Dirk Bialluch <DirkBi@Software2000.de>
+
+Thanks to Bryan Ewert for fixing a problem with vertex tweaks.
+
+Creation date:	28.10.1999
+Last update:	23.06.2001
+
+Description
+	This tool creates a copy of selected polygon meshes and	applies an optional
+	smooth and triangulate operation to the new objects. If	you modify the original
+	geometry you can view the smoothed/triangulated proxy object instantly.
+
+	For detailed information please refer to the HTML documentation.
+*/
+
+global proc connectPolyShape()
+{
+	cps_createUI showUI;
+}
+
+//
+// Create UI
+//
+
+global proc cps_createUI ( string $creationMode )
+{
+	if( !`window -exists cps_ui` )
+	{
+		int $uiLabelWidth = 140;
+		int $uiInputWidth = 240;
+		int $uiWidth = $uiLabelWidth + $uiInputWidth + 40;
+
+		window
+			-maximizeButton 0
+			-resizeToFitChildren 0
+			-title "Connect Poly Shape V3.0"
+			-iconName "Connect Poly Shape"
+			-menuBar true
+			-menuBarVisible true
+			-retain
+			-wh 460 400
+			cps_ui;
+		menu
+			-label "Edit"
+			-tearOff false;
+		menuItem
+	    		-label "Reset Settings"
+	    		-c "cps_storeRecallUI reset; deleteUI cps_ui; connectPolyShape";
+		menu
+			-label "Help"
+			-tearOff 0;
+		menuItem
+	    		-label "Script Information"
+	    		-c "cpsHelp";
+		menuItem
+			-divider 1;
+		menuItem
+	    		-label "Visit CPS Homepage"
+	    		-c "showHelp -a \"http://dirk-bialluch.mayaring.com/mel/html/mel_connectPolyShape.shtml\"";
+
+	 		string $cps_form = `formLayout -numberOfDivisions 100`;
+				string $cps_scroll = `scrollLayout -hst 16 -vst 16 -childResizable true -minChildWidth $uiWidth`;
+					columnLayout -adjustableColumn true -rowSpacing 5;
+						frameLayout
+							-label "Geometry"
+							-labelAlign "center"
+							-cll true
+							-lw $uiWidth
+							-mh 3
+			                                -borderStyle "etchedIn"
+							-cc "cps_adjustUI nop"
+							-ec "cps_adjustUI nop"
+							-bv true
+							cps_gFrame;
+	 						columnLayout -adjustableColumn true;
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth;
+									text
+										-l "Smooth Geometry"
+										-ann "Enable geometry smoothing.";
+									checkBox
+										-h 20
+										-label ""
+										-value true
+										-cc "cps_adjustUI nop"
+										cps_smooth;
+									setParent ..;
+								rowLayout
+									-numberOfColumns 3
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth
+									-columnWidth 2 $uiInputWidth
+									cps_divisions;
+									text
+										-l "Divisions"
+										-ann "Set the number of subdivisions created for each face";
+									intSliderGrp
+										-field true
+										-sliderStep 1
+										-value 1
+										-minValue 1
+										-maxValue 4
+										-cc "cps_adjustUI nop"
+										cps_divisions;
+									text -l "1 - 4";
+									setParent ..;
+								rowLayout
+									-numberOfColumns 3
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth
+									-columnWidth 2 $uiInputWidth
+									cps_continuity;
+									text
+										-l "Continuity"
+										-ann "Set the smoothness for polygon edges (0 = hard, 1 = soft)";
+									floatSliderGrp
+										-field true
+										-sliderStep .1
+										-value 1
+										-minValue 0
+										-maxValue 1
+										-cc "cps_adjustUI nop"
+										cps_continuity;
+									text -l "0 - 1";
+									setParent ..;
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth
+									cps_border;
+									text
+										-l "Keep Border"
+										-ann "Enable this option to keep the border edges unaffected by the smooth operation";
+									checkBox
+										-h 20
+										-label ""
+										-value true
+										-cc "cps_adjustUI nop"
+										cps_border;
+									setParent ..;
+
+								separator -h 8;
+					
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth;
+									text
+										-l "Triangulate Geometry"
+										-ann "Enable geometry triangulation.";
+									checkBox
+										-h 20
+										-label ""
+										-value false
+										-cc "cps_adjustUI nop"
+										cps_triangulate;
+									setParent ..;
+	
+								separator -h 8;
+	
+								rowLayout
+									-numberOfColumns 5
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth
+									-columnWidth 2 50
+									-columnWidth 3 50
+									-columnWidth 4 50;
+									text
+										-l "Mirror and Stitch"
+										-ann "Enable these options to mirror and stitch the proxy geometry about the specified axes";
+									checkBox
+										-h 20
+										-label "X"
+										-value 0
+										-cc "cps_adjustUI nop"
+										cps_mirrorStitchX;
+									checkBox
+										-h 20
+										-label "Y"
+										-value 0
+										-cc "cps_adjustUI nop"
+										cps_mirrorStitchY;
+									checkBox
+										-h 20
+										-label "Z"
+										-value 0
+										-cc "cps_adjustUI nop"
+										cps_mirrorStitchZ;
+									checkBox
+										-h 20
+										-label "Stitch"
+										-value 1
+										-cc "cps_adjustUI nop"
+										cps_mirrorStitchEnable;
+									setParent ..;
+								rowLayout
+									-numberOfColumns 4
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth
+									-columnWidth 2 45
+									-columnWidth 3 45;
+									text
+										-l "Mirror Direction"
+										-ann "Set the mirror axis.";
+									optionMenu
+										-label ""
+										-cc "cps_adjustUI nop"
+										cps_mirrorStitchAxisX;
+						    				menuItem -label "+X";
+						    				menuItem -label "-X";
+									optionMenu
+										-label ""
+										-cc "cps_adjustUI nop"
+										cps_mirrorStitchAxisY;
+					    					menuItem -label "+Y";
+						    				menuItem -label "-Y";
+									optionMenu
+										-label ""
+										-cc "cps_adjustUI nop"
+										cps_mirrorStitchAxisZ;
+						    				menuItem -label "+Z";
+						    				menuItem -label "-Z";
+									setParent ..;
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth
+									cps_rMergeVertexDistance;
+									text
+										-l "Merge Vertex Distance"
+										-ann "The tolerance value used to merge 2 adjoining vertices at the mirror seam";
+									floatField
+										-w 80
+										-value .001
+										-minValue 0.00001
+										-precision 5
+										-cc "cps_adjustUI nop"
+										cps_mergeVertexDistance;
+									setParent ..;
+								rowLayout
+									-numberOfColumns 4
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth
+									cps_rMirrorPlaneMode;
+									text
+										-l "Mirror Plane"
+										-ann "Set the mirror plane mode.";
+									optionMenu
+										-label ""
+										-cc "cps_adjustUI nop"
+										cps_mirrorPlaneMode;
+						    				menuItem -label "Origin";
+						    				menuItem -label "Bounding Box";
+						    				menuItem -label "Best Guess";
+									setParent ..;
+	
+								separator -h 8;
+	
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth;
+									text
+										-l "Soften/Harden Edges"
+										-ann "Soften or harden shading around edges at a specific face angle";
+									checkBox
+										-h 20
+										-label "(0 = all hard, 180 = all soft)"
+										-value false
+										-cc "cps_adjustUI nop"
+										cps_softenEdges;
+									setParent ..;
+								rowLayout
+									-numberOfColumns 3
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth
+									-columnWidth 2 $uiInputWidth
+									cps_softenEdgeAngle;
+									text
+										-l "Edge Angle"
+										-ann "Set the angle at which shading will result in a hard edge";
+									floatSliderGrp
+										-field true
+										-sliderStep 1
+										-value 30
+										-minValue 0
+										-maxValue 180
+										-cc "cps_adjustUI nop"
+										cps_softenEdgeAngle;
+									text -l "0 - 180";
+									setParent ..;
+	
+								separator -h 8;
+	
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth
+									cps_rNodeOrder;
+									text
+										-l "Node Order"
+										-ann "Set the order of the smooth and triangulate node";
+									radioButtonGrp
+										-nrb 2
+										-columnWidth 1 130
+										-columnWidth 2 130
+										-select 1
+										-cc "cps_adjustUI nop"
+										-l1 "Smooth/Triangulate"
+										-l2 "Triangulate/Smooth"
+										cps_nodeOrder;
+									setParent ..;
+	
+								separator -h 8;
+	
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth;
+									text
+										-l "Face Limit"
+										-ann "Set the maximum number of poly faces for the proxy geometry";
+									intField
+										-w 80
+										-value 5000
+										-minValue 200
+										-cc "cps_adjustUI nop"
+										cps_faceLimit;
+									setParent ..;
+								setParent ..;
+							setParent ..;
+						frameLayout
+							-label "DAG Transformation"
+							-labelAlign "center"
+							-cll true
+							-lw $uiWidth
+							-mh 3
+			                                -borderStyle "etchedIn"
+							-cc "cps_adjustUI nop"
+							-ec "cps_adjustUI nop"
+							-bv true
+							cps_tFrame;
+	 						columnLayout -adjustableColumn true;
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth
+									cps_rWorldTransformation;
+									text
+										-l "World Transformation"
+										-ann "Use the base object's world matrix to transform the proxy geomtry";
+									checkBox
+										-h 20
+										-label ""
+										-value 1
+										-cc "cps_adjustUI nop"
+										cps_worldTransformation;
+									setParent ..;
+
+								separator -h 8;
+
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth
+									cps_rSetPosition;
+									text
+										-l "Set Position"
+										-ann "Set an absolute position for the proxy geometry";
+									checkBox
+										-h 20
+										-label ""
+										-value false
+										-cc "cps_adjustUI nop"
+										cps_setPosition;
+									setParent ..;
+					
+								rowLayout
+									-numberOfColumns 4
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth
+									-columnWidth 2 80
+									-columnWidth 3 80
+									cps_rPosition;
+									text
+										-l "Position"
+										-ann "The position in xyz world space coordinates";
+									floatField
+										-w 80
+										-v 0
+										-cc "cps_adjustUI nop"
+										cps_xPos;
+									floatField
+										-w 80
+										-v 0
+										-cc "cps_adjustUI nop"
+										cps_yPos;
+									floatField
+										-w 80
+										-v 0
+										-cc "cps_adjustUI nop"
+										cps_zPos;
+									setParent ..;
+					
+								separator -h 8;
+					
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth
+									cps_rMirrorGeometry;
+									text
+										-l "Mirror Geometry"
+										-ann "Mirror the proxy geometry";
+									checkBox
+										-h 20
+										-label ""
+										-value false
+										-cc "cps_adjustUI nop"
+										cps_mirrorGeometry;
+									setParent ..;
+					
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth
+									cps_rMirrorAxis;
+									text
+										-l "Mirror Axis"
+										-ann "Set the world space mirror axis";
+									radioButtonGrp
+										-nrb 3
+										-columnWidth 1 45
+										-columnWidth 2 45
+										-select 1
+										-h 20
+										-cc "cps_adjustUI nop"
+										-l1 "X"
+										-l2 "Y"
+										-l3 "Z"
+										cps_mirrorAxis;
+									setParent ..;
+					
+								separator -h 8;
+					
+								rowLayout
+									-numberOfColumns 7
+									-cat 1 "right" 5
+									-cal 5 "center"
+									-cal 6 "center"
+									-cal 7 "center"
+									-columnWidth 1 $uiLabelWidth
+									-columnWidth 2 45
+									-columnWidth 3 45
+									-columnWidth 4 45
+									-columnWidth 5 45
+									-columnWidth 6 50
+									cps_rConnectTranslate;
+									text
+										-l "Connect Translate"
+										-ann "Connect translate attributes from the base mesh to the proxy geometry";
+									checkBox
+										-h 20
+										-label "X"
+										-value 1
+										-cc "cps_adjustUI nop"
+										cps_tx;
+									checkBox
+										-h 20
+										-label "Y"
+										-value 1
+										-cc "cps_adjustUI nop"
+										cps_ty;
+									checkBox
+										-h 20
+										-label "Z"
+										-value 1
+										-cc "cps_adjustUI nop"
+										cps_tz;
+									button
+										-w 40
+										-label "On"
+										-command "cps_adjustUI translateOn";
+									button
+										-w 40
+										-label "Off"
+										-command "cps_adjustUI translateOff";
+									button
+										-w 45
+										-label "All On"
+										-command "cps_adjustUI allTransformOn";
+									setParent ..;
+								rowLayout
+									-numberOfColumns 7
+									-cat 1 "right" 5
+									-cal 5 "center"
+									-cal 6 "center"
+									-cal 7 "center"
+									-columnWidth 1 $uiLabelWidth
+									-columnWidth 2 45
+									-columnWidth 3 45
+									-columnWidth 4 45
+									-columnWidth 5 45
+									-columnWidth 6 50
+									cps_rConnectRotate;
+									text
+										-l "Connect Rotate"
+										-ann "Connect rotate attributes from the base mesh to the proxy geometry";
+									checkBox
+										-h 20
+										-label "X"
+										-value true
+										-cc "cps_adjustUI nop"
+										cps_rx;
+									checkBox
+										-h 20
+										-label "Y"
+										-value true
+										-cc "cps_adjustUI nop"
+										cps_ry;
+									checkBox
+										-h 20
+										-label "Z"
+										-value true
+										-cc "cps_adjustUI nop"
+										cps_rz;
+									button
+										-w 40
+										-label "On"
+										-command "cps_adjustUI rotateOn";
+									button
+										-w 40
+										-label "Off"
+										-command "cps_adjustUI rotateOff";
+									button
+										-w 45
+										-label "All Off"
+										-command "cps_adjustUI allTransformOff";
+									setParent ..;
+								rowLayout
+									-numberOfColumns 6
+									-cat 1 "right" 5
+									-cal 5 "center"
+									-cal 6 "center"
+									-columnWidth 1 $uiLabelWidth
+									-columnWidth 2 45
+									-columnWidth 3 45
+									-columnWidth 4 45
+									-columnWidth 5 45
+									cps_rConnectScale;
+									text
+										-l "Connect Scale"
+										-ann "Connect scale attributes from the base mesh to the proxy geometry";
+									checkBox
+										-h 20
+										-label "X"
+										-value true
+										-cc "cps_adjustUI nop"
+										cps_sx;
+									checkBox
+										-h 20
+										-label "Y"
+										-value true
+										-cc "cps_adjustUI nop"
+										cps_sy;
+									checkBox
+										-h 20
+										-label "Z"
+										-value true
+										-cc "cps_adjustUI nop"
+										cps_sz;
+									button
+										-w 40
+										-label "On"
+										-command "cps_adjustUI scaleOn";
+									button
+										-w 40
+										-label "Off"
+										-command "cps_adjustUI scaleOff";
+									setParent ..;
+								rowLayout
+									-numberOfColumns 6
+									-cat 1 "right" 5
+									-cal 5 "center"
+									-cal 6 "center"
+									-columnWidth 1 $uiLabelWidth
+									-columnWidth 2 45
+									-columnWidth 3 45
+									-columnWidth 4 45
+									-columnWidth 5 45
+									cps_rConnectShear;
+									text
+										-l "Connect Shear"
+										-ann "Connect shear attributes from the base mesh to the proxy geometry";
+									checkBox
+										-h 20
+										-label "XY"
+										-value true
+										-cc "cps_adjustUI nop"
+										cps_sxy;
+									checkBox
+										-h 20
+										-label "XZ"
+										-value true
+										-cc "cps_adjustUI nop"
+										cps_sxz;
+									checkBox
+										-h 20
+										-label "YZ"
+										-value true
+										-cc "cps_adjustUI nop"
+										cps_syz;
+									button
+										-w 40
+										-label "On"
+										-command "cps_adjustUI shearOn";
+									button
+										-w 40
+										-label "Off"
+										-command "cps_adjustUI shearOff";
+									setParent ..;
+								setParent ..;
+							setParent ..;
+	
+						frameLayout
+							-label "Display and Rendering"
+							-labelAlign "center"
+							-cll true
+							-lw $uiWidth
+							-mh 3
+			                                -borderStyle "etchedIn"
+							-cc "cps_adjustUI nop"
+							-ec "cps_adjustUI nop"
+							-bv true
+							cps_dFrame;
+	 						columnLayout -adjustableColumn true;
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth;
+									text
+										-l "Disable Base Shading"
+										-ann "Enable this option to disable shading of the base geometry";
+									checkBox
+										-h 20
+										-label "(Switch base display layer unshaded)"
+										-value true
+										-cc "cps_adjustUI nop"
+										cps_noShade;
+									setParent ..;
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth;
+									text
+										-l "Disable Proxy Selection"
+										-ann "Enable this option to disable selection of the proxy geometry";
+									checkBox
+										-h 20
+										-label "(Switch proxy display layer non editable)"
+										-value true
+										-cc "cps_adjustUI nop"
+										cps_noSelection;
+									setParent ..;
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth;
+									text
+										-l "Display Layer Color"
+										-ann "Set the display layer color for the base geometry";
+									colorIndexSliderGrp
+										-min 0
+										-max 31
+										-value 30
+										-cc "cps_adjustUI nop"
+										cps_layerColorIndex;
+									setParent ..;
+
+								separator -h 8;
+	
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth;
+									text
+										-l "Base Render Invisible"
+										-ann "Enable this option to make the base geometry completely render invisible";
+									checkBox
+										-h 20
+										-label "(Disable all render flags for base geometry)"
+										-value true
+										-cc "cps_adjustUI nop"
+										cps_renderInvisible;
+									setParent ..;
+								rowLayout
+									-numberOfColumns 2
+									-cat 1 "right" 5
+									-columnWidth 1 $uiLabelWidth;
+									text
+										-l "Proxy Render Visible"
+										-ann "Enable this option to make the proxy geometry completely render visible";
+									checkBox
+										-h 20
+										-label "(Enable all render flags for proxy geometry)"
+										-value true
+										-cc "cps_adjustUI nop"
+										cps_renderVisible;
+									setParent ..;
+								setParent ..;
+							setParent ..;
+						setParent ..;
+					setParent ..;
+	
+				string $cps_button = `button
+					-label "Connect Poly Shape"
+					-command "cps_main"`;
+	
+				string $cps_control = `button
+					-label "CPS Control"
+					-command "cps_callControlWindow"`;
+	
+				string $cps_polyTools = `button
+					-label "CPS Toolbox"
+					-command "cps_callToolboxWindow"`;
+	
+				string $cps_close = `button
+					-label "Close"
+					-command "deleteUI cps_ui"`;
+	
+		// set form layouts
+		formLayout -edit
+			-attachForm $cps_scroll "top" 2
+			-attachForm $cps_scroll "left" 2
+			-attachControl $cps_scroll "bottom" 2 $cps_button
+			-attachForm $cps_scroll "right" 2
+	
+			-attachNone $cps_button "top"
+			-attachForm $cps_button "left" 2
+			-attachForm $cps_button "bottom" 2
+			-attachPosition $cps_button "right" 2 30
+	
+			-attachNone $cps_control "top"
+			-attachPosition $cps_control "left" 2 30
+			-attachForm $cps_control "bottom" 2
+			-attachPosition $cps_control "right" 2 53
+	
+			-attachNone $cps_polyTools "top"
+			-attachPosition $cps_polyTools "left" 2 53
+			-attachForm $cps_polyTools "bottom" 2
+			-attachPosition $cps_polyTools "right" 2 76
+	
+			-attachNone $cps_close "top"
+			-attachPosition $cps_close "left" 2 76
+			-attachForm $cps_close "bottom" 2
+			-attachPosition $cps_close "right" 2 100
+			$cps_form;
+	}
+
+	cps_storeRecallUI recall;
+
+	// check UI settings after restoring values
+	cps_adjustUI nop;
+
+	if( $creationMode == "showUI" )
+		showWindow cps_ui;
+}
+
+
+global proc cps_adjustUI ( string $function )
+{
+	if ( $function == "translateOn" || $function == "allTransformOn" )
+	{
+		checkBox -e -v 1 cps_tx;
+		checkBox -e -v 1 cps_ty;
+		checkBox -e -v 1 cps_tz;
+	}
+	if ( $function == "translateOff" || $function == "allTransformOff" )
+	{
+		checkBox -e -v 0 cps_tx;
+		checkBox -e -v 0 cps_ty;
+		checkBox -e -v 0 cps_tz;
+	}
+	if ( $function == "rotateOn" || $function == "allTransformOn" )
+	{
+		checkBox -e -v 1 cps_rx;
+		checkBox -e -v 1 cps_ry;
+		checkBox -e -v 1 cps_rz;
+	}
+	if ( $function == "rotateOff" || $function == "allTransformOff" )
+	{
+		checkBox -e -v 0 cps_rx;
+		checkBox -e -v 0 cps_ry;
+		checkBox -e -v 0 cps_rz;
+	}
+	if ( $function == "scaleOn" || $function == "allTransformOn" )
+	{
+		checkBox -e -v 1 cps_sx;
+		checkBox -e -v 1 cps_sy;
+		checkBox -e -v 1 cps_sz;
+	}
+	if ( $function == "scaleOff" || $function == "allTransformOff" )
+	{
+		checkBox -e -v 0 cps_sx;
+		checkBox -e -v 0 cps_sy;
+		checkBox -e -v 0 cps_sz;
+	}
+	if ( $function == "shearOn" || $function == "allTransformOn" )
+	{
+		checkBox -e -v 1 cps_sxy;
+		checkBox -e -v 1 cps_sxz;
+		checkBox -e -v 1 cps_syz;
+	}
+	if ( $function == "shearOff" || $function == "allTransformOff" )
+	{
+		checkBox -e -v 0 cps_sxy;
+		checkBox -e -v 0 cps_sxz;
+		checkBox -e -v 0 cps_syz;
+	}
+
+	if ( `checkBox -q -v cps_smooth` )
+	{
+		rowLayout -e -enable 1 cps_divisions;
+		rowLayout -e -enable 1 cps_continuity;
+		rowLayout -e -enable 1 cps_border;
+	}
+	else
+	{
+		rowLayout -e -enable 0 cps_divisions;
+		rowLayout -e -enable 0 cps_continuity;
+		rowLayout -e -enable 0 cps_border;
+	}
+
+	if ( `checkBox -q -v cps_softenEdges` )
+		rowLayout -e -enable 1 cps_softenEdgeAngle;
+	else
+		rowLayout -e -enable 0 cps_softenEdgeAngle;
+
+	if ( `checkBox -q -v cps_smooth` && `checkBox -q -v cps_triangulate` )
+		rowLayout -e -enable 1 cps_rNodeOrder;
+	else
+		rowLayout -e -enable 0 cps_rNodeOrder;
+
+	if ( `checkBox -q -v cps_mirrorStitchX` )
+		optionMenu -e -enable 1 cps_mirrorStitchAxisX;
+	else
+		optionMenu -e -enable 0 cps_mirrorStitchAxisX;
+
+	if ( `checkBox -q -v cps_mirrorStitchY` )
+		optionMenu -e -enable 1 cps_mirrorStitchAxisY;
+	else
+		optionMenu -e -enable 0 cps_mirrorStitchAxisY;
+
+	if ( `checkBox -q -v cps_mirrorStitchZ` )
+		optionMenu -e -enable 1 cps_mirrorStitchAxisZ;
+	else
+		optionMenu -e -enable 0 cps_mirrorStitchAxisZ;
+
+	if ( `checkBox -q -v cps_mirrorStitchX` || `checkBox -q -v cps_mirrorStitchY` || `checkBox -q -v cps_mirrorStitchZ` )
+	{
+		rowLayout -e -enable 1 cps_rMergeVertexDistance;
+		rowLayout -e -enable 1 cps_rMirrorPlaneMode;
+	}
+	else
+	{
+		rowLayout -e -enable 0 cps_rMergeVertexDistance;
+		rowLayout -e -enable 0 cps_rMirrorPlaneMode;
+	}
+
+	if( `checkBox -q -v cps_worldTransformation` )
+	{
+		rowLayout -e -enable 0 cps_rSetPosition;
+		rowLayout -e -enable 0 cps_rPosition;
+		rowLayout -e -enable 0 cps_rMirrorGeometry;
+		rowLayout -e -enable 0 cps_rMirrorAxis;
+		rowLayout -e -enable 0 cps_rConnectTranslate;
+		rowLayout -e -enable 0 cps_rConnectScale;
+		rowLayout -e -enable 0 cps_rConnectRotate;
+		rowLayout -e -enable 0 cps_rConnectShear;
+	}
+	else
+	{
+		rowLayout -e -enable 1 cps_rSetPosition;
+		rowLayout -e -enable 1 cps_rMirrorGeometry;
+		rowLayout -e -enable 1 cps_rConnectRotate;
+		rowLayout -e -enable 1 cps_rConnectShear;
+
+		if ( `checkBox -q -v cps_setPosition` )
+		{
+			rowLayout -e -enable 1 cps_rPosition;
+			rowLayout -e -enable 0 cps_rConnectTranslate;
+			rowLayout -e -enable 0 cps_rWorldTransformation;
+		}
+		else
+		{
+			rowLayout -e -enable 0 cps_rPosition;
+			rowLayout -e -enable 1 cps_rConnectTranslate;
+			rowLayout -e -enable 1 cps_rWorldTransformation;
+		}
+	
+		if ( `checkBox -q -v cps_mirrorGeometry` )
+		{
+			rowLayout -e -enable 1 cps_rMirrorAxis;
+			rowLayout -e -enable 0 cps_rConnectScale;
+			rowLayout -e -enable 0 cps_rWorldTransformation;
+		}
+		else
+		{
+			rowLayout -e -enable 0 cps_rMirrorAxis;
+			rowLayout -e -enable 1 cps_rConnectScale;
+			rowLayout -e -enable 1 cps_rWorldTransformation;
+		}
+	}	
+
+	cps_storeRecallUI store;
+}
+
+
+global proc cps_storeRecallUI( string $mode )
+{
+	string $floatFieldList[] = {
+		"cps_mergeVertexDistance",
+		"cps_xPos",
+		"cps_yPos",
+		"cps_zPos"
+		};
+
+	string $intFieldList[] = {
+		"cps_faceLimit"
+		};
+
+	string $optionMenuList[] = {
+		"cps_mirrorStitchAxisX",
+		"cps_mirrorStitchAxisY",
+		"cps_mirrorStitchAxisZ",
+		"cps_mirrorPlaneMode"
+		};
+
+	string $floatSliderGrpList[] = {
+		"cps_continuity",
+		"cps_softenEdgeAngle"
+		};
+
+	string $intSliderGrpList[] = {
+		"cps_divisions"
+		};
+
+	string $checkBoxList[] = {
+		"cps_worldTransformation",
+		"cps_setPosition",
+		"cps_mirrorGeometry",
+		"cps_noShade",
+		"cps_noSelection",
+		"cps_renderInvisible",
+		"cps_renderVisible",
+		"cps_border",
+		"cps_triangulate",
+		"cps_mirrorStitchX",
+		"cps_mirrorStitchY",
+		"cps_mirrorStitchZ",
+		"cps_mirrorStitchEnable",
+		"cps_softenEdges",
+		"cps_smooth",
+		"cps_tx",
+		"cps_ty",
+		"cps_tz",
+		"cps_rx",
+		"cps_ry",
+		"cps_rz",
+		"cps_sx",
+		"cps_sy",
+		"cps_sz",
+		"cps_sxy",
+		"cps_sxz",
+		"cps_syz"
+		};
+
+	string $radioButtonGrpList[] = {
+		"cps_nodeOrder",
+		"cps_mirrorAxis"
+		};
+
+	string $frameLayoutList[] = {
+		"cps_gFrame",
+		"cps_tFrame",
+		"cps_dFrame"
+		};
+
+	string $colorIndexSliderGrpList[] = {
+		"cps_layerColorIndex"
+		};
+
+	int $cnt;
+
+	if ( $mode == "store" )
+	{
+		for ( $cnt = 0; $cnt < size( $floatFieldList ); $cnt++ )
+			optionVar -floatValue $floatFieldList[$cnt] `floatField -q -value $floatFieldList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $intFieldList ); $cnt++ )
+			optionVar -intValue $intFieldList[$cnt] `intField -q -value $intFieldList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $floatSliderGrpList ); $cnt++ )
+			optionVar -floatValue $floatSliderGrpList[$cnt] `floatSliderGrp -q -value $floatSliderGrpList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $intSliderGrpList ); $cnt++ )
+			optionVar -intValue $intSliderGrpList[$cnt] `intSliderGrp -q -value $intSliderGrpList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $checkBoxList ); $cnt++ )
+			optionVar -intValue $checkBoxList[$cnt] `checkBox -q -value $checkBoxList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $optionMenuList ); $cnt++ )
+			optionVar -intValue $optionMenuList[$cnt] `optionMenu -q -select $optionMenuList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $radioButtonGrpList ); $cnt++ )
+			optionVar -intValue $radioButtonGrpList[$cnt] `radioButtonGrp -q -select $radioButtonGrpList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			optionVar -intValue $frameLayoutList[$cnt] `frameLayout -q -collapse $frameLayoutList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $colorIndexSliderGrpList ); $cnt++ )
+			optionVar -intValue $colorIndexSliderGrpList[$cnt] `colorIndexSliderGrp -q -value $colorIndexSliderGrpList[$cnt]`;
+	}
+
+	if ( $mode == "recall" )
+	{
+		for ( $cnt = 0; $cnt < size( $floatFieldList ); $cnt++ )
+			if ( `optionVar -exists $floatFieldList[$cnt]` )
+				floatField -e -value `optionVar -q $floatFieldList[$cnt]` $floatFieldList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $intFieldList ); $cnt++ )
+			if ( `optionVar -exists $intFieldList[$cnt]` )
+				intField -e -value `optionVar -q $intFieldList[$cnt]` $intFieldList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $floatSliderGrpList ); $cnt++ )
+			if ( `optionVar -exists $floatSliderGrpList[$cnt]` )
+				floatSliderGrp -e -value `optionVar -q $floatSliderGrpList[$cnt]` $floatSliderGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $intSliderGrpList ); $cnt++ )
+			if ( `optionVar -exists $intSliderGrpList[$cnt]` )
+				intSliderGrp -e -value `optionVar -q $intSliderGrpList[$cnt]` $intSliderGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $checkBoxList ); $cnt++ )
+			if ( `optionVar -exists $checkBoxList[$cnt]` )
+				checkBox -e -value `optionVar -q $checkBoxList[$cnt]` $checkBoxList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $optionMenuList ); $cnt++ )
+			if ( `optionVar -exists $optionMenuList[$cnt]` )
+				optionMenu -e -select `optionVar -q $optionMenuList[$cnt]` $optionMenuList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $radioButtonGrpList ); $cnt++ )
+			if ( `optionVar -exists $radioButtonGrpList[$cnt]` )
+				radioButtonGrp -e -select `optionVar -q $radioButtonGrpList[$cnt]` $radioButtonGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			if ( `optionVar -exists $frameLayoutList[$cnt]` )
+				frameLayout -e -collapse `optionVar -q $frameLayoutList[$cnt]` $frameLayoutList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $colorIndexSliderGrpList ); $cnt++ )
+			if ( `optionVar -exists $colorIndexSliderGrpList[$cnt]` )
+				colorIndexSliderGrp -e -value `optionVar -q $colorIndexSliderGrpList[$cnt]` $colorIndexSliderGrpList[$cnt];
+	}
+
+	if ( $mode == "reset" )
+	{
+		for ( $cnt = 0; $cnt < size( $floatFieldList ); $cnt++ )
+			optionVar -remove $floatFieldList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $intFieldList ); $cnt++ )
+			optionVar -remove $intFieldList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $floatSliderGrpList ); $cnt++ )
+			optionVar -remove $floatSliderGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $intSliderGrpList ); $cnt++ )
+			optionVar -remove $intSliderGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $checkBoxList ); $cnt++ )
+			optionVar -remove $checkBoxList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $optionMenuList ); $cnt++ )
+			optionVar -remove $optionMenuList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $radioButtonGrpList ); $cnt++ )
+			optionVar -remove $radioButtonGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			optionVar -remove $frameLayoutList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $colorIndexSliderGrpList ); $cnt++ )
+			optionVar -remove $colorIndexSliderGrpList[$cnt];
+	}
+}
+
+// call control window
+global proc cps_callControlWindow()
+{
+	if( `window -q -exists cpsc_ui` )
+	{
+		if( `window -q -iconify cpsc_ui` )
+			window -e -iconify 0 cpsc_ui;
+		else if( !`window -q -visible cpsc_ui` )
+			window -e -visible 1 cpsc_ui;
+		else
+			deleteUI cpsc_ui;
+	}
+	else
+		cpsControl;
+}
+
+// call toolbox window
+global proc cps_callToolboxWindow()
+{
+	if( `window -q -exists cpst_ui` )
+	{
+		if( `window -q -iconify cpst_ui` )
+			window -e -iconify 0 cpst_ui;
+		else if( !`window -q -visible cpst_ui` )
+			window -e -visible 1 cpst_ui;
+		else
+			deleteUI cpst_ui;
+	}
+	else
+		cpsToolbox;
+}
+
+
+global proc string[] cps_filterBaseDisplayLayer()
+{
+	// get list of display layer nodes
+	string $layerList[] = `ls -type "displayLayer"`;
+	string $baseLayer[];
+
+	// filter layer containing cpsOriginal ID
+	for( $lCnt = 0; $lCnt < size( $layerList ); $lCnt++ )
+		if( `attributeQuery -node $layerList[$lCnt] -exists "cpsOriginal"` )
+			$baseLayer[size( $baseLayer )] = $layerList[$lCnt];
+
+	return $baseLayer;
+}
+
+global proc string[] cps_filterProxyDisplayLayer()
+{
+	// get list of display layer nodes
+	string $layerList[] = `ls -type "displayLayer"`;
+	string $proxyLayer[];
+
+	// filter layer containing cpsResult ID
+	for( $lCnt = 0; $lCnt < size( $layerList ); $lCnt++ )
+		if( `attributeQuery -node $layerList[$lCnt] -exists "cpsResult"` )
+			$proxyLayer[size( $proxyLayer )] = $layerList[$lCnt];
+
+	return $proxyLayer;
+}
+
+proc cps_connectNode( string $source, string $destination )
+{
+	if( $source != "" && $destination != "" )
+	{
+		// add connection attribute to source node
+		if( !`attributeQuery -node $source -exists "cpsConnect"` )
+			addAttr -sn "cpsc" -ln "cpsConnect" -at "bool" -r 1 -w 1 -s 1 -k 0 -h 1 $source;
+	
+		// add connection attribute to destination node
+		if( !`attributeQuery -node $destination -exists "cpsConnect"` )
+			addAttr -sn "cpsc" -ln "cpsConnect" -at "bool" -r 1 -w 1 -s 1 -k 0 -h 1 $destination;
+	
+		connectAttr -f ( $source + ".cpsConnect" ) ( $destination + ".cpsConnect" );
+	}
+}
+
+proc string cps_smooth( int $divisions, int $continuity, int $border, string $origShape, string $lastNode )
+{
+	// create smooth node
+	string $smoothNode = `createNode polySmoothFace`;
+	setAttr ( $smoothNode + ".keepTessellation" ) 1;
+
+	// connect smooth node to last cps network node
+	if( `nodeType $lastNode` == "mesh" )
+		connectAttr -f ( $lastNode + ".outMesh" ) ( $smoothNode + ".inputPolymesh" );
+	else
+		connectAttr -f ( $lastNode + ".output" ) ( $smoothNode + ".inputPolymesh" );
+
+	// include all faces
+	setAttr ( $smoothNode + ".inputComponents" ) -type "componentList" 1 "f[*]";
+
+	// connect smooth node attributes to base geometry transform node
+	string $parent[] = `listRelatives -fullPath -p $origShape`;
+
+	if ( !`attributeQuery -exists -n $parent[0] "subdivisions"` )
+		addAttr -sn "sd" -ln "subdivisions" -at "short" -min 0 -max 4 -dv $divisions -k 1 $parent[0];
+	else
+		setAttr ( $parent[0] + ".subdivisions" ) $divisions;
+	connectAttr -f ( $parent[0] + ".subdivisions" ) ( $smoothNode + ".divisions" );
+
+	if ( !`attributeQuery -exists -n $parent[0] "continuity"` )
+		addAttr -sn "co" -ln "continuity" -at "float" -min 0 -max 1 -dv $continuity -k 1 $parent[0];
+	else
+		setAttr ( $parent[0] + ".continuity" ) $continuity;
+	connectAttr -f ( $parent[0] + ".continuity" ) ( $smoothNode + ".continuity" );
+
+	if ( !`attributeQuery -exists -n $parent[0] "keepBorder"` )
+		addAttr -sn "kb" -ln "keepBorder" -at "bool" -dv $border -k 1 $parent[0];
+	else
+		setAttr ( $parent[0] + ".keepBorder" ) $border;
+	connectAttr -f ( $parent[0] + ".keepBorder" ) ( $smoothNode + ".keepBorder" );
+
+	cps_connectNode $lastNode $smoothNode;
+
+	return $smoothNode;
+}
+
+
+proc string cps_triangulate( string $lastNode )
+{
+	string $triaNode = `createNode polyTriangulate`;
+
+	// include all faces
+	setAttr ( $triaNode + ".inputComponents" ) -type "componentList" 1 "f[*]";
+
+	// connect polyTriangulate node to last cps network node
+	if( `nodeType $lastNode` == "mesh" )
+		connectAttr -f ( $lastNode + ".outMesh" ) ( $triaNode + ".inputPolymesh" );
+	else
+		connectAttr -f ( $lastNode + ".output" ) ( $triaNode + ".inputPolymesh" );
+
+	cps_connectNode $lastNode $triaNode;
+
+	return $triaNode;
+}
+
+proc string cps_softenEdges( float $softenEdgeAngle, string $origShape, string $lastNode )
+{
+	string $softNode = `createNode polySoftEdge`;
+
+	// include all faces
+	setAttr ( $softNode + ".inputComponents" ) -type "componentList" 1 "e[*]";
+
+	// connect softenEdge node attribute to base geometry transform node
+	string $parent[] = `listRelatives -fullPath -p $origShape`;
+
+	if ( !`attributeQuery -exists -n $parent[0] "angle"` )
+		addAttr -sn "an" -ln "angle" -at "float" -min 0 -max 180 -dv $softenEdgeAngle -k 1 $parent[0];
+	else
+		setAttr ( $parent[0] + ".angle" ) $softenEdgeAngle;
+	connectAttr -f ( $parent[0] + ".angle" ) ( $softNode + ".angle" );
+
+	// connect polySoftEdge node to last cps network node
+	if( `nodeType $lastNode` == "mesh" )
+		connectAttr -f ( $lastNode + ".outMesh" ) ( $softNode + ".inputPolymesh" );
+	else
+		connectAttr -f ( $lastNode + ".output" ) ( $softNode + ".inputPolymesh" );
+
+	cps_connectNode $lastNode $softNode;
+
+	return $softNode;
+}
+
+// check for non zero vertex tweaks
+proc int cps_checkMesh ( string $shape )
+{
+	int $vertexNum[] = `polyEvaluate -v $shape`;
+	int $found = 0;
+	float $pos[];
+
+	for ( $cnt = 0; $cnt < $vertexNum[0]; $cnt++ )
+	{
+		$pos = `getAttr ( $shape + ".pnts[" + $cnt + "]" )`;
+		if ( $pos[0] || $pos[1] || $pos[2] )
+		{
+			$found = 1;
+			break;
+		}
+	}
+
+	return $found;
+}
+
+
+// mirror and stitch polygon geometry
+proc string cps_polyMirror( string $shape, int $axis, int $mirrorPlaneMode, int $mirrorStitchEnable, string $lastNode )
+{
+	int $x, $y, $z, $usedAxis;
+	
+	switch ( $axis )
+	{
+		case 1:
+			$x = -1;
+			$y = 0;
+			$z = 0;
+			$usedAxis = 0;
+			break;
+		case 2:
+			$x = 0;
+			$y = -1;
+			$z = 0;
+			$usedAxis = 1;
+			break;
+		case 3:
+			$x = 0;
+			$y = 0;
+			$z = -1;
+			$usedAxis = 2;
+			break;
+		case 4:
+			$x = 1;
+			$y = 0;
+			$z = 0;
+			$usedAxis = 0;
+			break;
+		case 5:
+			$x = 0;
+			$y = 1;
+			$z = 0;
+			$usedAxis = 1;
+			break;
+		case 6:
+			$x = 0;
+			$y = 0;
+			$z = 1;
+			$usedAxis = 2;
+			break;
+	}
+
+	// check if object is open
+	string $obj[] = `listRelatives -p $shape`;
+	getBorderEdges $obj[0];
+	string $borderEdges[]=`ls -sl -flatten`;
+	if( !size( $borderEdges ) )
+		confirmDialog
+			-title "Connect Poly Shape Warning"
+			-message (
+				"Polygon shape \"" + $shape + "\" is closed. The Mirror and\n" +
+				"Stitch tool was designed for open polygon shapes.\n\n" )
+		    	-button "OK";
+
+	float $xWidth = $yWidth = $zWidth = $xCenter = $yCenter = $zCenter = 0.0;
+
+	// calculate bounding box
+	if( $mirrorPlaneMode == 2 )
+	{
+		float $bb[] = `polyEvaluate -ae -b $shape`;
+		float $xMin = $bb[0];
+		float $xMax = $bb[1];
+		float $yMin = $bb[2];	
+		float $yMax = $bb[3];
+		float $zMin = $bb[4];	
+		float $zMax = $bb[5];
+		if ( $x == 0 )
+			$xCenter = $xMin;
+		else
+			$xCenter = $xMax;
+		if ( $y == 0 )
+			$yCenter = $yMin;
+		else
+			$yCenter = $yMax;
+		if ( $z == 0 )
+			$zCenter = $zMin;
+		else
+			$zCenter = $zMax;
+
+		$xWidth = ( $xMax - $xMin );
+		$yWidth = ( $yMax - $yMin );
+		$zWidth = ( $zMax - $zMin );
+	}
+
+	// best guess (change bounding box center)
+	if( $mirrorPlaneMode == 3 )
+	{
+		// convert border edges to vertices
+		string $vertices[] = `polyListComponentConversion -fe -tv $borderEdges`;
+		$vertices = `ls -flatten $vertices`; // expand component list
+
+		string $posList[] = {}; // point positions
+
+		// get position of vertices
+		for( $cnt = 0; $cnt < size( $vertices ); $cnt++ )
+		{
+			float $pos[] = `xform -q -os -a -t $vertices[$cnt]`;
+			$posList[$cnt] = string( $pos[$usedAxis] );
+		}
+
+		// count largest number of points on one plane (axis)
+		int $topCount = 0;
+		int $topNum = 0;
+
+		for( $cnt = 0; $cnt < size( $posList ); $cnt++ )
+		{
+			int $count = AWNumberOfOccurrencesInStringArray( $posList[$cnt], $posList );
+
+			// equal number of vertices on plane different planes -> choose the one closer to the mirror direction (-/+)
+			if( $count == $topCount )
+			{
+				if( $axis <= 3 && float( $posList[$cnt] ) > float( $posList[$topNum] ) )
+					$topNum = $cnt;
+				if( $axis >= 4 && float( $posList[$cnt] ) < float( $posList[$topNum] ) )
+					$topNum = $cnt;
+			}
+
+			// more number of vertices -> use this plane
+			if( $count > $topCount )
+			{
+				$topCount = $count;
+				$topNum = $cnt;
+			}
+		}
+
+		if( $usedAxis == 0 )
+			$xCenter = $posList[$topNum];
+		if( $usedAxis == 1 )
+			$yCenter = $posList[$topNum];
+		if( $usedAxis == 2 )
+			$zCenter = $posList[$topNum];
+	}
+
+	// create polyChipOff node
+	string $polyChipOffNode = `createNode polyChipOff`;
+
+	setAttr ( $polyChipOffNode + ".pvx" ) $xCenter;
+	setAttr ( $polyChipOffNode + ".pvy" ) $yCenter;
+	setAttr ( $polyChipOffNode + ".pvz" ) $zCenter;
+
+	if ( $x == 0 )
+		setAttr ( $polyChipOffNode + ".sx" ) 1;
+	else
+		setAttr ( $polyChipOffNode + ".sx" ) -1;
+	if ( $y == 0 )
+		setAttr ( $polyChipOffNode + ".sy" ) 1;
+	else
+		setAttr ( $polyChipOffNode + ".sy" ) -1;
+	if ( $z == 0 )
+		setAttr ( $polyChipOffNode + ".sz" ) 1;
+	else
+		setAttr ( $polyChipOffNode + ".sz" ) -1;
+	setAttr ( $polyChipOffNode + ".inputComponents" ) -type "componentList" 1 "f[*]";
+
+	// connect polyChipOff node to last cps network node
+	if( `nodeType $lastNode` == "mesh" )
+		connectAttr -f ( $lastNode + ".outMesh" ) ( $polyChipOffNode + ".inputPolymesh" );
+	else
+		connectAttr -f ( $lastNode + ".output" ) ( $polyChipOffNode + ".inputPolymesh" );
+	cps_connectNode $lastNode $polyChipOffNode;
+	
+	// stitch both halves
+	string $mergeNode = `createNode polyMergeVert`;
+	setAttr ( $mergeNode + ".texture" ) 0;
+	setAttr ( $mergeNode + ".distance" ) 0.001;
+	setAttr ( $mergeNode + ".inputComponents" ) -type "componentList" 1 "vtx[*]";
+	connectAttr -f ( $polyChipOffNode + ".output" ) ( $mergeNode + ".inputPolymesh" );
+	cps_connectNode $polyChipOffNode $mergeNode;
+	if( !$mirrorStitchEnable )
+		setAttr ( $mergeNode + ".nodeState" ) 1;
+
+	// conform the normals
+	string $normalNode1 = `createNode polyNormal`;
+	setAttr	( $normalNode1 + ".normalMode" ) 2;
+	setAttr ( $normalNode1 + ".inputComponents" ) -type "componentList" 1 "f[*]";
+	connectAttr -f ( $mergeNode + ".output" ) ( $normalNode1 + ".inputPolymesh" );
+	cps_connectNode $mergeNode $normalNode1;
+
+	// reverse the normals
+	string $normalNode2 = `createNode polyNormal`;
+	setAttr	( $normalNode2 + ".normalMode" ) 3;
+	setAttr ( $normalNode2 + ".inputComponents" ) -type "componentList" 1 "f[*]";
+	connectAttr -f ( $normalNode1 + ".output" ) ( $normalNode2 + ".inputPolymesh" );
+	cps_connectNode $normalNode1 $normalNode2;
+
+	return $normalNode2;
+}
+
+
+//
+// Main procedure
+//
+global proc cps_main ()
+{
+	// get UI settings
+	int $smooth =		`checkBox -q -v cps_smooth`;
+	int $divisions =	`intSliderGrp -q -v cps_divisions`;
+	float $continuity =	`floatSliderGrp -q -v cps_continuity`;
+	int $border =		`checkBox -q -v cps_border`;
+
+	int $triangulate =	`checkBox -q -v cps_triangulate`;
+
+	int $mirrorStitchX = 	`checkBox -q -v cps_mirrorStitchX`;
+	int $mirrorStitchY = 	`checkBox -q -v cps_mirrorStitchY`;
+	int $mirrorStitchZ = 	`checkBox -q -v cps_mirrorStitchZ`;
+	int $mirrorStitchEnable = `checkBox -q -v cps_mirrorStitchEnable`;
+	int $mirrorStitchAxisX = `optionMenu -q -select cps_mirrorStitchAxisX`;
+	int $mirrorStitchAxisY = `optionMenu -q -select cps_mirrorStitchAxisY`;
+	int $mirrorStitchAxisZ = `optionMenu -q -select cps_mirrorStitchAxisZ`;
+
+	int $mirrorPlaneMode =	`optionMenu -q -select cps_mirrorPlaneMode`;
+
+	int $softenEdges =	`checkBox -q -v cps_softenEdges`;
+	float $softenEdgeAngle = `floatSliderGrp -q -v cps_softenEdgeAngle`;
+
+	int $nodeOrder =	`radioButtonGrp -q -select cps_nodeOrder`;
+
+	int $worldTransformation = `checkBox -q -v cps_worldTransformation`;
+
+	int $setPosition =	`checkBox -q -v cps_setPosition`;
+	float $xPos =		`floatField -q -v cps_xPos`;
+	float $yPos =		`floatField -q -v cps_yPos`;
+	float $zPos =		`floatField -q -v cps_zPos`;
+
+	int $mirrorGeometry =	`checkBox -q -v cps_mirrorGeometry`;
+	int $mirrorAxis = 	`radioButtonGrp -q -select cps_mirrorAxis`;
+
+	int $noShade =		`checkBox -q -v cps_noShade`;
+	int $noSelection =	`checkBox -q -v cps_noSelection`;
+	int $renderInvisible =	`checkBox -q -v cps_renderInvisible`;
+	int $renderVisible =	`checkBox -q -v cps_renderVisible`;
+
+	int $conTX =		`checkBox -q -v cps_tx`;
+	int $conTY =		`checkBox -q -v cps_ty`;
+	int $conTZ =		`checkBox -q -v cps_tz`;
+	int $conRX =		`checkBox -q -v cps_rx`;
+	int $conRY =		`checkBox -q -v cps_ry`;
+	int $conRZ =		`checkBox -q -v cps_rz`;
+	int $conSX =		`checkBox -q -v cps_sx`;
+	int $conSY =		`checkBox -q -v cps_sy`;
+	int $conSZ =		`checkBox -q -v cps_sz`;
+	int $conSHX =		`checkBox -q -v cps_sxy`;
+	int $conSHY =		`checkBox -q -v cps_sxz`;
+	int $conSHZ =		`checkBox -q -v cps_syz`;
+
+	int $faceLimit =	`intField -q -v cps_faceLimit`;
+
+	int $layerColor =	`colorIndexSliderGrp -q -v cps_layerColorIndex` - 1;
+
+	int $layerPerObject =	1;
+
+	// get selected poly shape nodes
+	string $sel[] = `filterExpand -sm 12`;
+	string $shapes[];
+	string $shapeList[];
+	int $listCnt = 0;
+
+	for ( $selCnt = 0; $selCnt < size ( $sel ); $selCnt++ )
+	{
+		$shapes = `listRelatives -s -fullPath $sel[$selCnt]`;
+		$shapeList[$listCnt++] = $shapes[0];
+	}
+
+	if ( !size( $shapeList ) )
+		error "No polygon objects selected";
+
+	string $layerOriginal = "cpsBase";
+	string $layerResult = "cpsProxy";
+
+	// check if base layer already exists
+	if ( `objExists "cpsBase"` )
+	{
+		// is node a CPS display layer ?
+		if ( `nodeType "cpsBase"` != "displayLayer" || !`attributeQuery -node "cpsBase" -exists "cpsOriginal"` )
+			$layerOriginal = "cpsBase#";
+	}
+
+	// check if other base display layer already exist
+	string $baseLayerList[] = `cps_filterBaseDisplayLayer`;
+	if( !size( $baseLayerList ) )
+	{
+		// create new layer
+		$layerOriginal = `createDisplayLayer -name $layerOriginal -empty`;
+
+		// add id attribute
+		addAttr -sn "cpso" -ln "cpsOriginal" -at "bool" -r 0 -w 0 -s 0 -k 0 -h 1 $layerOriginal;
+	}
+	else
+		// use first existing occurence
+		$layerOriginal = $baseLayerList[0];
+
+	// turn off shading
+	setAttr ( $layerOriginal + ".shading" ) ( !$noShade );
+
+	// set color
+	setAttr ( $layerOriginal + ".color" ) $layerColor;
+
+
+	// check if proxy layer already exists
+	if ( `objExists "cpsProxy"` )
+	{
+		// is node a CPS display layer ?
+		if ( `nodeType "cpsProxy"` != "displayLayer" || !`attributeQuery -node "cpsProxy" -exists "cpsResult"` )
+			$layerResult = "cpsProxy#";
+	}
+
+	// check if other proxy display layer already exist
+	string $proxyLayerList[] = `cps_filterProxyDisplayLayer`;
+	if( !size( $proxyLayerList ) )
+	{
+		// create new layer
+		$layerResult = `createDisplayLayer -name $layerResult -empty`;
+
+		// add id attribute
+		addAttr -sn "cpsr" -ln "cpsResult" -at "bool" -r 0 -w 0 -s 0 -k 0 -h 1 $layerResult;
+	}
+	else
+		// use first existing occurence
+		$layerResult = $proxyLayerList[0];
+
+	// disable selection for proxy layer
+	setAttr ( $layerResult + ".displayType" ) ( $noSelection * 2 ); // set value to 0 or 2
+
+
+	for ( $cnt = 0; $cnt < size( $shapeList ); $cnt++ )
+	{
+		// get number of poly faces and display warning if face limit is exceeded
+		int $faceNum[] = `polyEvaluate -face $shapeList[$cnt]`;
+		int $triangleNum[] = `polyEvaluate -triangle $shapeList[$cnt]`;
+		int $faceInfo;
+
+		string $message;
+
+		// node order = smooth/triangulate
+		if ( $nodeOrder == 1 && $smooth && $triangulate )
+		{
+			$faceInfo = $faceNum[0] * `pow 2 ( $divisions * 2 )`;
+			$message += "Smoothing will result in approximately " + $faceInfo + " poly faces at a subdivision level of " + $divisions + ".\n";
+
+			$faceInfo = $triangleNum[0] / $faceNum[0] * $faceInfo;
+			$message += "Triangulate will result in approximately " + $faceInfo + " poly faces.\n";
+		}
+		// node order = triangulate/smooth
+		else if ( $nodeOrder == 2 && $smooth && $triangulate )
+		{
+			$faceInfo = $triangleNum[0];
+			$message += "Triangulate will result in approximately " + $faceInfo + " poly faces.\n";
+
+			$faceInfo = $faceInfo * `pow 2 ( $divisions * 2 )` * .75;
+			$message += "Smoothing will result in approximately " + $faceInfo + " poly faces at a subdivision level of " + $divisions + ".\n";
+		}
+		// no node order, only smooth or triangulate node
+		else if ( $smooth || $triangulate )
+		{
+			if ( $smooth )
+			{
+				$faceInfo = $faceNum[0] * `pow 2 ( $divisions * 2 )`;
+				$message += "Smoothing will result in approximately " + $faceInfo + " poly faces at a subdivision level of " + $divisions + ".\n";
+			}
+
+			if ( $triangulate )
+			{
+				$faceInfo = $triangleNum[0];
+				$message += "Triangulate will result in approximately " + $faceInfo + " poly faces.\n";
+			}
+		}
+		else
+			$faceInfo = $faceNum[0];
+
+		int $mirrorStitchPow = $mirrorStitchX + $mirrorStitchY + $mirrorStitchZ;
+		if ( $mirrorStitchPow )
+		{
+			$faceInfo *= `pow 2 $mirrorStitchPow`;
+			$message += "Mirror and Stitch will result in approximately " + $faceInfo + " poly faces.\n";
+		}
+
+		$message += "\nPolygon shape \"" + $shapeList[$cnt] + "\" will exceed the face limit of " + $faceLimit + " with " + $faceInfo + " poly faces.\n" +
+				"Depending on the selected tool options this may lead to noticeable performance slowdown.\n\n";
+
+		if ( $faceInfo > $faceLimit )
+		{
+			string $result = `confirmDialog
+				-title "Connect Poly Shape Warning"
+				-message $message
+			    	-button "Continue"
+			    	-button "Skip"
+			    	-button "Cancel"
+			    	-defaultButton "Cancel"
+			    	-cancelButton "Cancel"
+			    	-dismissString "Cancel"`;
+
+			if ( $result == "Skip" )
+				continue;
+
+			if ( $result == "Cancel" )
+				return;
+		}
+
+		// check if transformation has to be frozen
+		if( $mirrorStitchX || $mirrorStitchY || $mirrorStitchZ || $worldTransformation )
+		{
+			string $trans[] = `listRelatives -p -fullPath $shapeList[$cnt]`; // get source transform node
+
+			string $attrList[] = { ".tx", ".ty", ".tz", ".rx", ".ry", ".rz", ".sx", ".sy", ".sz" };
+			float $attrValue[] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0 };
+			int $found = 0;
+	
+			for( $aCnt = 0; $aCnt < size( $attrList ); $aCnt++ )
+				if( `getAttr ( $trans[0] + $attrList[$aCnt] )` != $attrValue[$aCnt] )
+				{
+					$found = 1;
+					break;
+				}
+	
+			if( $found )
+			{
+				string $result = `confirmDialog
+					-title "Connect Poly Shape Warning"
+					-message (
+						"Polygon shape \"" + $shapeList[$cnt] + "\" has transformations applied.\n" +
+						"Using the Mirror & Stitch or World Transformtion option\n" +
+						"requires these transformations to be frozen.\n\n" )
+				    	-button "Freeze Transformation"
+				    	-button "Skip"
+				    	-button "Cancel"
+				    	-defaultButton "Cancel"
+				    	-cancelButton "Cancel"
+				    	-dismissString "Cancel"`;
+	
+				if ( $result == "Skip" )
+					continue;
+	
+				if ( $result == "Cancel" )
+					return;
+	
+				if( $result == "Freeze Transformation" )
+				{
+					$found = 0;
+	
+					for( $aCnt = 0; $aCnt < size( $attrList ); $aCnt++ )
+						if( `connectionInfo -isDestination ( $trans[0] + $attrList[$aCnt] )` )
+						{
+							$found = 1;
+							break;
+						}
+	
+					if( $found )
+					{
+						$result = `confirmDialog
+							-title "Connect Poly Shape Error"
+							-message (
+								"Freeze Transform could not be applied because transform node\n" +
+								"\"" + $trans[0] + "\" has incoming connections.\n\n" )
+						    	-button "Skip"
+						    	-button "Cancel"
+						    	-defaultButton "Cancel"
+						    	-cancelButton "Cancel"
+						    	-dismissString "Cancel"`;
+	
+						if ( $result == "Skip" )
+							continue;
+			
+						if ( $result == "Cancel" )
+							return;
+					}
+					else
+						makeIdentity -apply 1 -t 1 -r 1 -s 1 $trans[0];
+				}
+			}
+		}
+
+		// check mesh for vertex tweaks
+		if ( `cps_checkMesh $shapeList[$cnt]` )
+		{
+			string $result = `confirmDialog
+				-title "Connect Poly Shape Warning"
+				-message (
+					"Polygon shape \"" + $shapeList[$cnt] + "\" contains non zero vertex tweaks.\n" +
+					"This may lead to unexpected mesh offsets.\n\n" +
+					"NOTE: \"Zero Vertex Tweaks\" will delete construction history of the base geometry.\n" )
+			    	-button "Continue"
+			    	-button "Zero Vertex Tweaks"
+			    	-button "Skip"
+			    	-button "Cancel"
+			    	-defaultButton "Cancel"
+			    	-cancelButton "Cancel"
+			    	-dismissString "Cancel"`;
+			
+			if ( $result == "Skip" )
+				continue;
+
+			if ( $result == "Zero Vertex Tweaks" )
+			{
+				int $numV[] = `polyEvaluate $shapeList[$cnt]`;
+				polyMoveVertex
+					-ch 1 -pvx 0.0 -pvy 0.0 -pvz 0.0 -tx 0 -ty 0 -tz 0 -rx 0 -ry 0 -rz 0 -sx 1 -sy 1 -sz 1 
+					-ran 0 -ltz 0 -ws 0 -ldx 1 -ldy 0 -ldz 0
+					( $shapeList[$cnt] + ".vtx[0:" + $numV[0] + "]" );
+				delete -ch $shapeList[$cnt];
+			}
+			
+			if ( $result == "Cancel" )
+				return;
+		}
+
+		// assign object to base layer
+		string $connect[] = `listConnections -d 0 -s 1 ( $shapeList[$cnt] + ".drawOverride" )`;
+		if( !size( $connect ) )
+			connectAttr -f ( $layerOriginal + ".drawInfo" ) ( $shapeList[$cnt] + ".drawOverride" );
+
+		// duplicate existing polygon object
+		string $dup[];
+		string $par[] = `listRelatives -parent -fullPath $shapeList[$cnt]`;
+		$dup = `duplicate -name ( $par[0] + "CPSproxy#" ) $shapeList[$cnt]`;
+
+		// remove dynamic attributes from duplicated transform node
+		string $dynAttr[] = `deleteAttr -q $dup[0]`;
+		for( $dCnt = 0; $dCnt < size( $dynAttr ); $dCnt++ )
+			deleteAttr -at $dynAttr[$dCnt] $dup[0];
+
+		// get shape node
+		string $shape[] = `listRelatives -shapes -fullPath $dup[0]`;
+
+		// assign new shape to proxy layer
+		connectAttr -f ( $layerResult + ".drawInfo" ) ( $shape[0] + ".drawOverride" );
+
+		// assign initialShadingGroup to new mesh node
+		sets -edit -forceElement initialShadingGroup $shape[0];
+
+		// connect base and proxy geometry
+		if( !`attributeQuery -node $shapeList[$cnt] -exists "cpsOut"` )
+			addAttr -sn "cpso" -ln "cpsOut" -at "bool" -r 1 -w 1 -s 1 -k 0 -h 1 $shapeList[$cnt];
+		if( !`attributeQuery -node $shape[0] -exists "cpsIn"` )
+			addAttr -sn "cpsi" -ln "cpsIn" -at "bool" -r 1 -w 1 -s 1 -k 0 -h 1 $shape[0];
+		connectAttr -f ( $shapeList[$cnt] + ".cpsOut" ) ( $shape[0] + ".cpsIn" );
+
+		// set last node in network
+		string $lastNode = $shapeList[$cnt];
+
+		// mirror and stitch geometry
+		if( $mirrorStitchX )
+			$lastNode = `cps_polyMirror $shape[0] ( ( $mirrorStitchAxisX - 1 ) * 3 + 1 ) $mirrorPlaneMode $mirrorStitchEnable $lastNode`;
+		if( $mirrorStitchY )
+			$lastNode = `cps_polyMirror $shape[0] ( ( $mirrorStitchAxisY - 1 ) * 3 + 2 ) $mirrorPlaneMode $mirrorStitchEnable $lastNode`;
+		if( $mirrorStitchZ )
+			$lastNode = `cps_polyMirror $shape[0] ( ( $mirrorStitchAxisZ - 1 ) * 3 + 3 ) $mirrorPlaneMode $mirrorStitchEnable $lastNode`;
+
+		// check smooth/triangulate node order
+		if ( $nodeOrder == 1 )
+		{
+			if ( $smooth )
+				$lastNode = `cps_smooth $divisions $continuity $border $shapeList[$cnt] $lastNode`;
+			if ( $triangulate )
+				$lastNode = `cps_triangulate $lastNode`;
+		}
+		else
+		{
+			if ( $triangulate )
+				$lastNode = `cps_triangulate $lastNode`;
+			if ( $smooth )
+				$lastNode = `cps_smooth $divisions $continuity $border $shapeList[$cnt] $lastNode`;
+		}
+
+		// apply soften/harden edge node
+		if ( $softenEdges )
+			$lastNode = `cps_softenEdges $softenEdgeAngle $shapeList[$cnt] $lastNode`;
+
+		// connect last cps network node to destination shape
+		if( `nodeType $lastNode` == "mesh" )
+			connectAttr -f ( $lastNode + ".outMesh" ) ( $shape[0] + ".inMesh" );
+		else
+			connectAttr -f ( $lastNode + ".output" ) ( $shape[0] + ".inMesh" );
+
+
+		// get transform nodes from shapes
+		string $sourceTrans[] = `listRelatives -p $shapeList[$cnt]`;
+		string $destTrans[] = `listRelatives -p $shape[0]`;
+
+		// make dag node connections for transformation
+		if( $worldTransformation )
+		{
+			// get node.attr directly connected to proxy inMesh
+			string $prevNode[] = `listConnections -plugs 1 ( $shape[0] + ".inMesh" )`;
+
+			// insert transformGeometry node between previous and proxy node
+			string $transGeoNode = `createNode transformGeometry`;
+			connectAttr $prevNode[0] ( $transGeoNode + ".inputGeometry" );
+			connectAttr -force ( $transGeoNode + ".outputGeometry" ) ( $shape[0] + ".inMesh" );
+
+			cps_connectNode $lastNode $transGeoNode;
+			$lastNode = $transGeoNode;
+
+			// connect source transform world  matrix
+			connectAttr ( $sourceTrans[0] + ".worldMatrix" ) ( $transGeoNode + ".transform" );
+		}
+		else
+		{
+			// connect translate, rotate, scale and shear attributes
+			if ( $setPosition )
+				move -a -ws $xPos $yPos $zPos $destTrans[0];
+			else
+			{
+				if ( $conTX )
+					connectAttr -f ( $sourceTrans[0] + ".tx" ) ( $destTrans[0] + ".tx" );
+				if ( $conTY )
+					connectAttr -f ( $sourceTrans[0] + ".ty" ) ( $destTrans[0] + ".ty" );
+				if ( $conTZ )
+					connectAttr -f ( $sourceTrans[0] + ".tz" ) ( $destTrans[0] + ".tz" );
+			}
+	
+			if ( $mirrorGeometry )
+			{
+				float $scale[] = `xform -q -a -s $sourceTrans[0]`;
+				switch ( $mirrorAxis )
+				{
+					case 1:
+						scale -a ( $scale[0] * -1 ) $scale[1] $scale[2] $destTrans[0];
+						break;
+					case 2:
+						scale -a $scale[0] ( $scale[1] * -1 ) $scale[2] $destTrans[0];
+						break;
+					case 3:
+						scale -a $scale[0] $scale[1] ( $scale[2] * -1 ) $destTrans[0];
+						break;
+				}
+			}
+			else
+			{
+				if ( $conSX )
+					connectAttr -f ( $sourceTrans[0] + ".sx" ) ( $destTrans[0] + ".sx" );
+				if ( $conSY )
+					connectAttr -f ( $sourceTrans[0] + ".sy" ) ( $destTrans[0] + ".sy" );
+				if ( $conSZ )
+					connectAttr -f ( $sourceTrans[0] + ".sz" ) ( $destTrans[0] + ".sz" );
+			}
+	
+			if ( $conRX )
+				connectAttr -f ( $sourceTrans[0] + ".rx" ) ( $destTrans[0] + ".rx" );
+			if ( $conRY )
+				connectAttr -f ( $sourceTrans[0] + ".ry" ) ( $destTrans[0] + ".ry" );
+			if ( $conRZ )
+				connectAttr -f ( $sourceTrans[0] + ".rz" ) ( $destTrans[0] + ".rz" );
+	
+			if ( $conSHX )
+				connectAttr -f ( $sourceTrans[0] + ".shearXY" ) ( $destTrans[0] + ".shearXY" );
+			if ( $conSHY )
+				connectAttr -f ( $sourceTrans[0] + ".shearXZ" ) ( $destTrans[0] + ".shearXZ" );
+			if ( $conSHZ )
+				connectAttr -f ( $sourceTrans[0] + ".shearYZ" ) ( $destTrans[0] + ".shearYZ" );
+		}
+
+		// switch base object render invisible
+		if ( $renderInvisible )
+		{
+			setAttr ( $shapeList[$cnt] + ".castsShadows" ) 0;
+			setAttr ( $shapeList[$cnt] + ".primaryVisibility" ) 0;
+			setAttr ( $shapeList[$cnt] + ".visibleInReflections" ) 0;
+			setAttr ( $shapeList[$cnt] + ".visibleInRefractions" ) 0;
+		}
+
+		// switch proxy object render visible
+		if ( $renderVisible )
+		{
+			setAttr ( $shape[0] + ".castsShadows" ) 1;
+			setAttr ( $shape[0] + ".primaryVisibility" ) 1;
+			setAttr ( $shape[0] + ".visibleInReflections" ) 1;
+			setAttr ( $shape[0] + ".visibleInRefractions" ) 1;
+		}
+
+		cps_connectNode $lastNode $shape[0];
+	}
+
+	select -clear;
+}
+
+// end of script

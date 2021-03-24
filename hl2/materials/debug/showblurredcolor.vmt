@@ -1,0 +1,8 @@
+"ShowDestAlpha"
+{
+	"$fbtexture" "_rt_SmallHDR0"
+	"%noToolTexture" 1
+	"$multiplybyalpha" 0
+	"$multiplybycolor" 1
+}
+

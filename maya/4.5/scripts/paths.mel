@@ -1,0 +1,89 @@
+//-----------------------------------------------------------------------------
+// Creates directories needed by the VMT files
+//-----------------------------------------------------------------------------
+global proc computeVMTDirectories( )
+	{
+	global string $vmt_materials;
+	global string $vmt_materialsrc;
+	global int $gotDirectories;
+
+	if (!$gotDirectories)
+		{
+		// get the current project and VPROJECT directories
+		// Remove trailing / off vproject
+		string $vproject;
+		$vproject = `getenv "VPROJECT"`;
+		$vproject = `substitute "/$" $vproject ""`;
+		$vproject = `tolower $vproject`;
+
+		// set the materials directory.
+		$vmt_materials = $vproject + "/materials/";
+
+		// set the root materialSrc directory also
+		$vmt_materialsrc = $vproject + "/materialsrc/";
+
+		$gotDirectories = 1;
+		}
+	}
+
+
+//-----------------------------------------------------------------------------
+// Used to create relative paths for various data types
+//-----------------------------------------------------------------------------
+global proc string getRelativeModelName( string $fullPath )
+	{
+	string $lowerFullPath = `tolower $fullPath`;
+
+	string $models = `match "/models/" $lowerFullPath`;
+	if ( $models == "/models/" )
+		{
+		string $relativeName = `substitute "^.*/models/" $lowerFullPath ""`;
+		return $relativeName;
+		}
+
+	return "";
+	}
+
+global proc string getRelativeMaterialName( string $fullPath )
+	{
+	string $lowerFullPath = `tolower $fullPath`;
+
+	string $materials = `match "/materials/" $lowerFullPath`;
+	if ( $materials == "/materials/" )
+		{
+		string $relativeName = `substitute "^.*/materials/" $fullPath ""`;
+		return $relativeName;
+		}
+
+	return "";
+	}
+
+global proc string getRelativeMaterialsrcName( string $fullPath )
+	{
+	string $lowerFullPath = `tolower $fullPath`;
+
+	string $materialsrc = `match "/materialsrc/" $lowerFullPath`;
+	if ( $materialsrc == "/materialsrc/" )
+		{
+		string $relativeName = `substitute "^.*/materialsrc/" $lowerFullPath ""`;
+		return $relativeName;
+		}
+
+	return "";
+	}
+
+
+//-----------------------------------------------------------------------------
+// Constructs full paths based on relative paths
+//-----------------------------------------------------------------------------
+global proc string getFullMaterialPath( string $relativePath )
+	{
+	global string $vmt_materials;
+	return $vmt_materials + $relativePath;
+	}
+
+global proc string getFullMaterialsrcPath( string $relativePath )
+	{
+	global string $vmt_materialsrc;
+	return $vmt_materialsrc + $relativePath;
+	}

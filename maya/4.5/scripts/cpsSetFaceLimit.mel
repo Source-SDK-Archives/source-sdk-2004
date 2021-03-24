@@ -1,0 +1,150 @@
+/* cpsSetFaceLimit.mel
+
+This script may be freely distributed. Modify at your own risk.
+
+Author: Dirk Bialluch <DirkBi@Software2000.de>
+
+Creation date:	30.05.2001
+Last update:	30.05.2001
+
+*/
+
+//
+// Create UI
+//
+
+global proc cpsSetFaceLimit()
+{
+	int $uiLabelWidth = 100;
+	int $uiInputWidth = 100;
+	int $uiWidth = $uiLabelWidth + $uiInputWidth + 10;
+
+	if( `window -exists cpsf_ui` )
+		deleteUI cpsf_ui;
+
+	window
+		-wh 380 150
+		-titleBar 1
+		-maximizeButton 0
+		-resizeToFitChildren 0
+		-title "CPS Set Face Limit"
+		-iconName "CPS Set Face Limit"
+		-menuBar true
+		-menuBarVisible true
+		cpsf_ui;
+
+		menu
+			-label "Edit"
+			-tearOff false;
+		menuItem
+	    		-label "Reset Settings"
+	    		-c "cpsf_storeRecallUI reset; cpsSetFaceLimit";
+
+ 		string $cpsf_form = `formLayout -numberOfDivisions 100`;
+			string $cpsf_scroll = `scrollLayout -hst 16 -vst 16 -childResizable true -minChildWidth $uiWidth`;
+				columnLayout -adjustableColumn 1;
+					frameLayout
+						-label "Set Face Limit"
+						-labelAlign "center"
+						-cll true
+						-lw $uiWidth
+						-mh 3
+		                                -borderStyle "etchedIn"
+						-cc "cpsf_storeRecallUI store"
+						-ec "cpsf_storeRecallUI store"
+						-bv true
+						cpsf_fFrame;
+						columnLayout -adjustableColumn 1;
+							rowLayout
+								-numberOfColumns 2
+								-cat 1 "right" 5
+								-columnWidth 1 $uiLabelWidth;
+								text
+									-l "Face Limit"
+									-ann "Set maximum face limit for resulting geometry";
+								intField
+									-v 5000
+									-min 200
+									-max 1000000
+									-w $uiInputWidth
+									-cc "cpsf_adjustUI"
+									cpsf_faceLimit;
+								setParent ..;
+							setParent ..;
+						setParent ..;
+					setParent ..;
+				setParent ..;
+			button
+				-label "Close"
+				-command "deleteUI cpsf_ui"
+				cpsf_b1;
+
+	// set form layouts
+	formLayout -edit
+		-attachForm $cpsf_scroll "top" 2
+		-attachForm $cpsf_scroll "left" 2
+		-attachControl $cpsf_scroll "bottom" 2 cpsf_b1
+		-attachForm $cpsf_scroll "right" 2
+
+		-attachNone cpsf_b1 "top"
+		-attachForm cpsf_b1 "left" 2
+		-attachForm cpsf_b1 "bottom" 2
+		-attachPosition cpsf_b1 "right" 2 100
+
+		$cpsf_form;
+
+	cpsf_storeRecallUI recall;
+	cpsf_adjustUI;
+	showWindow cpsf_ui;
+}
+
+global proc cpsf_adjustUI()
+{
+	cpsf_storeRecallUI store;
+
+	// update CPS Control RMB popup menu
+	if( `menuItem -exists cpsc_mEnableFaceLimit` )
+		menuItem -e -l ( "Enable Face Limit (" + `optionVar -q cpsf_faceLimit` + ")" ) cpsc_mEnableFaceLimit;
+}
+
+global proc cpsf_storeRecallUI( string $mode )
+{
+	string $frameLayoutList[] = {
+		"cpsf_fFrame" };
+
+	string $intFieldList[] = {
+		"cpsf_faceLimit" };
+
+	int $cnt;
+
+	if ( $mode == "store" )
+	{
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			optionVar -intValue $frameLayoutList[$cnt] `frameLayout -q -collapse $frameLayoutList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $intFieldList ); $cnt++ )
+			optionVar -intValue $intFieldList[$cnt] `intField -q -value $intFieldList[$cnt]`;
+	}
+
+	if ( $mode == "recall" )
+	{
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			if ( `optionVar -exists $frameLayoutList[$cnt]` )
+				frameLayout -e -collapse `optionVar -q $frameLayoutList[$cnt]` $frameLayoutList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $intFieldList ); $cnt++ )
+			if ( `optionVar -exists $intFieldList[$cnt]` )
+				intField -e -value `optionVar -q $intFieldList[$cnt]` $intFieldList[$cnt];
+	}
+
+	if ( $mode == "reset" )
+	{
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			optionVar -remove $frameLayoutList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $intFieldList ); $cnt++ )
+			optionVar -remove $intFieldList[$cnt];
+	}
+}
+
+// end of script

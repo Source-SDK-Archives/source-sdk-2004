@@ -1,0 +1,5 @@
+"DebugLuxels"
+{
+	"$basetexture" "debug/debugluxels"
+	"$vertexalpha" 1
+}

@@ -1,0 +1,393 @@
+// Copyright (C) 1997-2001 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+//	SCRIPT:	jsDefineCreature.mel
+//	AUTHOR:	Jason Schleifer
+//			oy_vay@hotmail.com
+//	DATE:	July 21, 2001	
+//
+//	DESCRIPTION:	This script can be used to define a creeature
+//					that will be used with jsMovIn and jsMovOut.
+//
+//	REQUIRES:	jsListCreatures.mel
+//				jsCreateCreature.mel
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+
+global proc jsCreateDefineCreatureWin (string $win)
+{
+	window -title "jsDefineCreature" $win;
+
+	$f = `formLayout -nd 100`;
+		text -l "Creatures in Scene" jsDefineCreatureExistingT;
+		textScrollList -nr 10 -ams 0 jsDefineCreatureListTSL;
+		button -l "Add Creature" jsDefineCreatureAddCreatureB;
+		button -l "Remove Creature" -enable 0 jsDefineCreatureRemoveCreatureB;
+		separator -hr false jsDefineCreatureSeparator;
+		text -l "Connected Objects" jsDefineCreatureConnectedT;
+		textScrollList -nr 10 -ams 1 jsDefineCreatureConnectedTSL;
+		button -l "Add Objects" jsDefineCreatureAddObjectB;
+		button -l "Select Hilighted Objects" jsDefineCreatureSelectObjectB;
+		button -l "Remove Objects" jsDefineCreatureRemoveObjectB;
+		
+
+	formLayout -e
+		-af jsDefineCreatureExistingT top 5	
+		-af jsDefineCreatureExistingT left 5	
+		-ap jsDefineCreatureExistingT right 0 45 
+
+		-af jsDefineCreatureAddCreatureB left 5
+		-af jsDefineCreatureAddCreatureB bottom 5
+		-ap jsDefineCreatureAddCreatureB right 0 22
+		
+		-ap jsDefineCreatureRemoveCreatureB left 0 24
+		-ap jsDefineCreatureRemoveCreatureB right 0 45
+		-af jsDefineCreatureRemoveCreatureB bottom 5 
+
+		-ac jsDefineCreatureListTSL top 5 jsDefineCreatureExistingT
+		-af jsDefineCreatureListTSL left 5
+		-ac jsDefineCreatureListTSL bottom 5 jsDefineCreatureRemoveCreatureB
+		-ap jsDefineCreatureListTSL right 0 45
+
+		// separator
+
+		-ac jsDefineCreatureSeparator left 5 jsDefineCreatureExistingT
+		-af jsDefineCreatureSeparator top 5
+		-af jsDefineCreatureSeparator bottom 5
+
+		// connected objects
+
+		-af jsDefineCreatureConnectedT top 5
+		-ac jsDefineCreatureConnectedT left 5 jsDefineCreatureSeparator
+		
+		-ac jsDefineCreatureAddObjectB left 5 jsDefineCreatureSeparator
+		-ap jsDefineCreatureAddObjectB right 0 73
+		-af jsDefineCreatureAddObjectB bottom 5
+
+
+		-ap jsDefineCreatureRemoveObjectB left 0 75
+		-af jsDefineCreatureRemoveObjectB right 5
+		-af jsDefineCreatureRemoveObjectB bottom 5
+	
+		-ac jsDefineCreatureSelectObjectB left 5 jsDefineCreatureSeparator
+		-an jsDefineCreatureSelectObjectB top 
+		-af jsDefineCreatureSelectObjectB right 5
+		-ac jsDefineCreatureSelectObjectB bottom 5 jsDefineCreatureRemoveObjectB
+
+		-ac jsDefineCreatureConnectedTSL left 5 jsDefineCreatureSeparator
+		-ac jsDefineCreatureConnectedTSL top 5 jsDefineCreatureConnectedT
+		-af jsDefineCreatureConnectedTSL right 5
+		-ac jsDefineCreatureConnectedTSL bottom 5 jsDefineCreatureSelectObjectB
+
+		$f;
+}
+global proc jsCreateDefineCreatureWinCB ()
+{
+	// define the callbacks for the window
+
+	// jsDefineCreatureListTSL
+	// 		selected: 
+	//			update the jsDefineCreatureConnectedTSL with
+	// 			a list of all the connected objects
+	//		double-clicked:
+	//			allow the ability to rename the creature
+	textScrollList -e 
+		-sc "jsDefineCreatureShowConnectedObjs"
+		-dcc "jsDefineCreatureRenameCreature"
+		jsDefineCreatureListTSL;
+
+	
+	// jsDefineCreatureAddCreatureB 
+	//		clicked:
+	//			add a new creature node to the scene
+	button -e
+		-c "jsDefineCreatureAddNewCreature"
+		jsDefineCreatureAddCreatureB;
+
+	// jsDefineCreatureRemoveCreatureB 
+	//		clicked:
+	//			remove the selected creature node from the scene
+
+	button -e
+		-c "jsDefineCreatureRemoveCreature"
+		jsDefineCreatureRemoveCreatureB;
+
+	// jsDefineCreatureAddObjectB 
+	// 		clicked:
+	//			connect the selected objects in the scene and their attributes
+	//			to the node
+	button -e
+		-c "jsDefineCreaturePrepareAddObjects"
+		jsDefineCreatureAddObjectB;
+
+	// jsDefineCreatureRemoveObjectB
+	//		clicked:
+	//			remove the selected objects from the connection list
+	button -e
+		-c "jsDefineCreatureRemoveObjects"
+		jsDefineCreatureRemoveObjectB;
+
+	// jsDefineCreatureSelectObjectB
+	//		clicked:
+	//			Select the selected objects from the connection list
+	button -e
+		-c "jsDefineCreatureSelectObjects"
+		jsDefineCreatureSelectObjectB;
+	
+}
+
+global proc jsDefineCreatureSelectObjects ()
+{
+	// find what's selected
+	string $objects[0];
+	$objects = `textScrollList -q -si jsDefineCreatureConnectedTSL`;
+	string $selList[0];
+	int $x = 0;
+
+	if (size($objects) > 0)
+	{
+		string $ob;
+		for ($ob in $objects)
+		{
+			string $break[0];
+			tokenize ($ob, ".", $break);
+			$selList[$x] = $break[0];
+			$x++;
+		}
+	}
+
+	// remove duplicates
+	$selList = stringArrayRemoveDuplicates($selList);
+  
+
+	select $selList;
+}
+global proc jsDefineCreatureRemoveObjects ()
+{
+	// first make sure that something is selected
+	string $objects[0];
+	string $creatures[0];
+	$objects = `textScrollList -q -si jsDefineCreatureConnectedTSL`;
+	$creatures = `textScrollList -q -si jsDefineCreatureListTSL`;
+	if (size($objects) == 0)
+	{
+		error "You haven't selected any objects, try again.\n";
+	}
+	if (size($creatures) == 0)
+	{
+		error "You haven't selected a creature, try again.\n";
+	}
+
+	$shapes = `listRelatives -f -s $creatures[0]`;
+	$creature = $shapes[0];
+
+	for ($object in $objects)
+	{
+		disconnectAttr -na $object ($creature + ".jsConnectedObjs");
+	}
+	jsDefineCreatureShowConnectedObjs ;
+	
+}
+global proc jsDefineCreaturePrepareAddObjects ()
+{
+	// find out which creature is selected first.
+	string $selected[0];
+	string $shapes[0];
+	string $creature;
+	string $connectedObjects[0];
+	string $selectedObjs[0];
+	string $newObjs[0];
+	int $n = 0;
+
+	$selected = `textScrollList -q -si jsDefineCreatureListTSL`;
+	$shapes = `listRelatives -f -s $selected[0]`;
+	$creature = $shapes[0];
+
+	// check and see if the jsConnectedObjs attribute exists
+	if (!`attributeQuery -exists -node $creature "jsConnectedObjs"`)
+	{
+		addAttr -ln "jsConnectedObjs" -at message -multi -im false $creature;
+	}
+	
+	// get a list of all the connected objects
+	$connectedObjects = `listConnections -p true -s true ($creature + ".jsConnectedObjs")`;
+	
+	// get the currently selected objects
+	$selectedObjs = `ls -sl`;
+	for ($ob in $selectedObjs)
+	{
+		// go through the attributes and add them to the $newObjs list
+		$attrs = `listAttr -k $ob`;
+
+		for ($at in $attrs)
+		{
+			$newObjs[$n] = ($ob + "." + $at);
+			$n++;
+		}
+	}
+
+	string $allArray[] = `stringArrayCatenate $connectedObjects $newObjs`;
+
+	// remove all the duplicate ones
+	string $shortArray[] = `stringArrayRemoveDuplicates($allArray)`;
+
+	// now disconnect all the connectedObjects
+	for ($ob in $connectedObjects)
+	{
+		disconnectAttr -na $ob ($creature + ".jsConnectedObjs");
+	}
+
+	// now connect all the new ones
+	for ($short in $shortArray)
+	{
+		connectAttr -na $short ($creature + ".jsConnectedObjs");
+	}
+
+	jsDefineCreatureShowConnectedObjs;
+}
+global proc jsDefineCreatureRenameCreature ()
+{
+	// find out which creature is selected.
+	string $selected[0];
+	$selected = `textScrollList -q -si jsDefineCreatureListTSL`;
+	string $newName = $selected[0];
+	// get the new name
+	$result = `promptDialog -m "New Creature Name:" -b "Okay" -b "Cancel" -db "Okay" -cb "Cancel"`;
+	if ($result != "Cancel")
+	{
+		$newName = `promptDialog -q`;
+		$newName = `rename $selected[0] $newName`;
+	}
+	
+	jsUpdateDefineCreatureWin;
+	textScrollList -e -si $newName jsDefineCreatureListTSL;
+
+}
+global proc jsDefineCreatureRemoveCreature ()
+{
+	// find out which creature is selected.  
+	string $selected[0];
+	$selected = `textScrollList -q -si jsDefineCreatureListTSL`;
+
+	// find out if they want to delete the object, or just remove it's
+	// definition as a creature.
+	string $result;
+	$result = `confirmDialog -m ("Do you want to:\nDELETE " + $selected[0] +"\nor\nREMOVE the creature definition of " + $selected[0] + "?") -b "DELETE" -b "REMOVE" -b "Cancel" -cb "Cancel"`;
+
+	if ($result != "Cancel")
+	{
+		if ($result == "DELETE")
+			delete $selected[0];
+		if ($result == "REMOVE")
+		{
+			// find the shape 
+			$shape = `listRelatives -f $selected[0]`;
+			if (`attributeQuery -exists -node $shape[0] "jsCreature"`)
+				deleteAttr ($shape[0] + ".jsCreature");
+		}
+	}
+	jsUpdateDefineCreatureWin;
+}
+global proc jsDefineCreatureShowConnectedObjs ()
+{
+	button -e -enable 1 jsDefineCreatureRemoveCreatureB;
+
+	// find out what node is selected
+	string $selected[0];
+	string $shapes[0];
+	string $creature;
+	$selected = `textScrollList -q -si jsDefineCreatureListTSL`;
+
+	$shapes = `listRelatives -f -s $selected[0]`;
+	$creature = $shapes[0];
+
+	string $connected[0];
+	if (!`attributeQuery -exists -node $creature "jsConnectedObjs"`)
+		addAttr -ln "jsConnectedObjs" -at message -multi -im false $creature;
+
+	$connected = `listConnections -p true -s true ($creature + ".jsConnectedObjs")`;
+	
+	textScrollList -e -ra jsDefineCreatureConnectedTSL;
+
+	for ($con in $connected)
+	{
+		textScrollList -e -a $con jsDefineCreatureConnectedTSL;
+	}
+
+}
+global proc jsDefineCreatureAddNewCreature ()
+{
+	// creates a new creature.  Bring up a prompt dialog to get the name of the
+	// new creature.
+
+	$result = `promptDialog -tx "creature" -m "Enter the name of the new creature:" -b "Okay" -b "Cancel" -db "Okay" -cb "Cancel"`;
+
+	if ($result != "Cancel")
+	{
+		$name = `promptDialog -q`;
+		// attempt to make a creature by the name of $name
+		
+		$cmd = ("jsCreateCreature " + $name);
+		evalEcho $cmd;
+	}
+	jsUpdateDefineCreatureWin;
+}
+global proc jsUpdateDefineCreatureWin ()
+{
+	// first remove all entries from the two text scrollLists
+	textScrollList -e -ra jsDefineCreatureConnectedTSL;
+	textScrollList -e -ra jsDefineCreatureListTSL;
+
+	// now find all the existing creatures in the scene
+	string $creatures[0];
+	$creatures = `jsListCreatures`;
+
+	// $creatures = all the shapes of the creatures. For each one,
+	// go through and add the parent name to the jsDefineCreatureListTSL
+	
+	for ($cre in $creatures)
+	{
+		$parent = `listRelatives -p $cre`;
+		textScrollList -e -a $parent[0] jsDefineCreatureListTSL;
+	}
+
+}
+global proc jsDefineCreature ()
+{
+	// The first thing to do is determine whether or not there are any other
+	// creatures in the scene.  Because we're going with pure maya nodes, we
+	// need to come up with something unique that we can use to define our
+	// character.  In this case, we're going to locators, just because they're
+	// lightweight, and fun to use!
+
+	// create a window that will list all the creatures in the scene, and what
+	// bits are connected to them.
+
+	$win = "jsDefineCreatureWin";
+
+	if (`window -exists $win`)	
+		deleteUI $win;
+
+	jsCreateDefineCreatureWin ($win);
+	jsCreateDefineCreatureWinCB;
+
+	showWindow $win;
+
+	// now update the window to show all the creatures in the scene
+	jsUpdateDefineCreatureWin;
+}

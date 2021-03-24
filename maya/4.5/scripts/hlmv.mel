@@ -1,0 +1,30 @@
+global proc hlmv (string $path)
+	{
+	$path =`tolower $path`;
+	if (`size $path` == 0 || $path == "-c")
+		{
+		$path = `workspace -q -rd`;
+		string $qcFile[] = `getFileList -fs "*.qc" -fld $path`;
+		$path = $path + $qcFile[0];
+		}
+
+	int $file = `fopen $path "r"`;
+	frewind $file;
+	string $nextLine;
+	while (! `feof $file`)
+		{
+		$nextLine = `fgetline $file`;
+		$nextLine = `tolower $nextLine`;
+		if (`gmatch $nextLine "$modelname *"`)
+			{
+			$nextLine = `fromNativePath $nextLine`;
+			string $modelPath;
+			$modelPath = `getenv "VPROJECT"`;
+			$modelPath += "/models/";
+			$finalPath = `substitute "$modelname " $nextLine $modelPath`;
+			print("\nHLMV " +  $finalPath);
+			system ("HLMV " +  $finalPath);
+			}
+		}
+	fclose $file;
+	}

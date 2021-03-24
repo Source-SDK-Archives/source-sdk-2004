@@ -1,0 +1,223 @@
+// Copyright (C) 1997-2001 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+//	SCRIPT:	jsChannelCtrl.mel
+//	AUTHOR:	Jason Schleifer
+//			oy_vay@hotmail.com
+//	DATE:	July 24, 2001	
+//
+//	DESCRIPTION:	look at what attributes are selected, and
+//					based on the argument passed, make either:
+//					trans keyable
+//					rot keyable
+//					scale keyable
+//					vis keyable
+//					all keyable
+//					non-keyable
+//					locked
+//					non-keyable & locked
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+global proc string[] jsGetSelectedObjects ()
+{
+	// find out what's selected in the channel box
+	string $mol[0]; 
+	string $sol[0]; 
+	string $hol[0]; 
+	string $ool[0]; 
+
+	string $allObjects[0];
+
+	$mol = `channelBox -q -mol mainChannelBox`;
+
+	$sol = `channelBox -q -sol mainChannelBox`;
+
+	$hol = `channelBox -q -hol mainChannelBox`;
+
+	$ool = `channelBox -q -ool mainChannelBox`;
+	
+	$allObjects = `stringArrayCatenate $mol $sol `;
+	$allObjects = `stringArrayCatenate $allObjects $hol`;
+	$allObjects = `stringArrayCatenate $allObjects $ool`;
+ 	
+	return $allObjects;
+
+}
+global proc string[] jsGetSelectedChannels ()
+{
+	// find out what's selected in the channel box
+	string $mol[0]; string $sma[0];
+	string $sol[0]; string $ssa[0];
+	string $hol[0]; string $sha[0];
+	string $ool[0]; string $soa[0];
+
+	string $allObjects[0];
+	int $a = 0;
+
+	$mol = `channelBox -q -mol mainChannelBox`;
+	$sma = `channelBox -q -sma mainChannelBox`;
+
+	$sol = `channelBox -q -sol mainChannelBox`;
+	$ssa = `channelBox -q -ssa mainChannelBox`;
+
+	$hol = `channelBox -q -hol mainChannelBox`;
+	$sha = `channelBox -q -sha mainChannelBox`;
+
+	$ool = `channelBox -q -ool mainChannelBox`;
+	$soa = `channelBox -q -soa mainChannelBox`;
+
+	// now that we have all the lists, build a list of objects and attributes
+	for ($m in $mol)
+	{
+		for ($s in $sma)
+		{
+			$allObjects[$a++] = ($m + "." + $s);
+		}
+	}
+	for ($m in $sol)
+	{
+		for ($s in $ssa)
+		{
+			$allObjects[$a++] = ($m + "." + $s);
+		}
+	}
+	for ($m in $hol)
+	{
+		for ($s in $sha)
+		{
+			$allObjects[$a++] = ($m + "." + $s);
+		}
+	}
+	for ($m in $ool)
+	{
+		for ($s in $soa)
+		{
+			$allObjects[$a++] = ($m + "." + $s);
+		}
+	}
+
+	return $allObjects;
+
+}
+global proc jsSetChannel (string $type, string $objAttr)
+{
+	string $break[0];
+	tokenize ($objAttr, ".", $break);
+
+	if (`attributeQuery -exists -node $break[0]  $break[1]`)
+	{
+		switch ($type)
+		{
+			case "keyable":
+				setAttr -k 1 ($objAttr);
+				break;
+			case "nonKeyable":
+				setAttr -k 0 ($objAttr);
+				break;
+			case "locked":
+				setAttr -l 1 ($objAttr);
+				break;
+			case "unlocked":
+				setAttr -l 0 ($objAttr);
+				break;
+		}
+	}
+}
+global proc jsChannelCtrl ( string $type )
+{
+	string $allObjects[0];
+	string $allChannels[0];
+	$allChannels = `jsGetSelectedChannels`;
+	$allObjects = `jsGetSelectedObjects`;
+
+	switch ($type)
+	{
+		case "t_key":
+			for ($all in $allObjects)
+			{
+				jsSetChannel "keyable" ($all+ ".tx");
+				jsSetChannel "keyable" ($all+ ".ty");
+				jsSetChannel "keyable" ($all+ ".tz");
+			}
+			break;
+		case "r_key":
+			for ($all in $allObjects)
+			{
+				jsSetChannel "keyable" ($all+ ".rx");
+				jsSetChannel "keyable" ($all+ ".ry");
+				jsSetChannel "keyable" ($all+ ".rz");
+			}
+			break;
+		case "s_key":
+			for ($all in $allObjects)
+			{
+				jsSetChannel "keyable" ($all+ ".sx");
+				jsSetChannel "keyable" ($all+ ".sy");
+				jsSetChannel "keyable" ($all+ ".sz");
+			}
+			break;
+		case "v_key":
+			for ($all in $allObjects)
+			{
+				jsSetChannel "keyable" ($all+ ".v");
+			}
+			break;
+		case "a_key":
+			for ($all in $allObjects)
+			{
+				jsSetChannel "keyable" ($all+ ".tx");
+				jsSetChannel "keyable" ($all+ ".ty");
+				jsSetChannel "keyable" ($all+ ".tz");
+				jsSetChannel "keyable" ($all+ ".rx");
+				jsSetChannel "keyable" ($all+ ".ry");
+				jsSetChannel "keyable" ($all+ ".rz");
+				jsSetChannel "keyable" ($all+ ".sx");
+				jsSetChannel "keyable" ($all+ ".sy");
+				jsSetChannel "keyable" ($all+ ".sz");
+				jsSetChannel "keyable" ($all+ ".v");
+			}
+			break;
+		case "nonKeyable":
+			for ($all in $allChannels)
+			{
+				jsSetChannel "nonKeyable" ($all);
+			}
+			break;
+		case "locked":
+			for ($all in $allChannels)
+			{
+				jsSetChannel "locked" ($all);
+			}
+			break;
+		case "unlocked":
+			for ($all in $allChannels)
+			{
+				jsSetChannel "unlocked" ($all);
+			}
+		case "nonKeyableLocked":
+			for ($all in $allChannels)
+			{
+				jsSetChannel "nonKeyable" ($all);
+				jsSetChannel "locked" ($all);
+			}
+			break;
+
+	
+	}
+}

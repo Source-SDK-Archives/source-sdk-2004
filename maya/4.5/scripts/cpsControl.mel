@@ -1,0 +1,2757 @@
+/* cpsControl.mel
+
+This script may be freely distributed. Modify at your own risk.
+
+Author: Dirk Bialluch <DirkBi@Software2000.de>
+
+Creation date:	09.01.2001
+Last update:	23.06.2001
+
+*/
+
+//
+// Create UI
+//
+
+global proc cpsControl ()
+{
+	int $uiWidth = 136;
+
+	if( `window -exists cpsc_ui` )
+		deleteUI cpsc_ui;
+
+	// preload optionVar to get initial title bar settings
+	int $titleBar = 1;
+	if( `optionVar -exists cpsc_mShowTitleBar` )
+		$titleBar = `optionVar -q cpsc_mShowTitleBar`;
+
+	window
+		-wh 172 502
+		-titleBar $titleBar
+		-maximizeButton 0
+		-resizeToFitChildren 0
+		-title "CPS Control"
+		-iconName "CPS Control"
+		-menuBar true
+		-menuBarVisible true
+		cpsc_ui;
+	menu
+		-label "Help"
+		-tearOff 0;
+	menuItem
+    		-label "Script Information"
+    		-c "cpsHelp";
+	menuItem
+		-divider 1;
+	menuItem
+    		-label "Visit CPS Homepage"
+    		-c "showHelp -a \"http://dirk-bialluch.mayaring.com/mel/html/mel_connectPolyShape.shtml\"";
+ 
+ 		string $cpsc_form = `formLayout -numberOfDivisions 100`;
+			popupMenu -button 2;
+    			menuItem
+				-checkBox 1
+    				-l "Show Title Bar"
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mShowTitleBar;
+    			menuItem
+				-checkBox 1
+    				-l "Show Menu"
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mShowMenu;
+    			menuItem
+				-checkBox 1
+    				-l "Show Close/Window Position Button"
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mShowCloseButton;
+    			menuItem
+    				-divider 1;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Increase/Decrease Subdivisions\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUIsubdivisions;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Toggle Node State\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUItoggleNodeState;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Disconnect/Snap Border Vertices\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUIdisconnect;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Delete History/Proxy\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUIdeleteHistory;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Toggle Wireframe/HUD\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUItoggleWireframe;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Toggle X-Ray/X-Ray per Object\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUItoggleXray;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Toggle Isolate Select/DAG Evaluation\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUItoggleIsolateSelect;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Toggle Backface Culling/Affect Selected\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUItoggleBackface;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Toggle Visibility/Keep Faces Together\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUItoggleVisibility;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Select Proxy/Base\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUIselectProxy;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Selection Mode\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUIselectionMode;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Convert Selection\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUIconvertSelection;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Selection Constraints\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUIconstraint;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Shrink/Expand Selection Region\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUIselectionRegion;
+    			menuItem
+				-checkBox 1
+    				-l "Show \"Toggle Shading/Editable\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUIshading;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Merge Layer/Toggle Layer Import Mode\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUImergeLayer;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Execute CPS/Options\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUIcps;
+    			menuItem
+				-checkBox 1
+				-l "Show \"Call Toolbox\""
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUItoolbox;
+    			menuItem
+    				-divider 1;
+			menuItem
+		    		-label "Script Information"
+		    		-c "cpsHelp";
+			menuItem
+				-divider 1;
+			menuItem
+		    		-label "Visit CPS Homepage"
+		    		-c "showHelp -a \"http://dirk-bialluch.mayaring.com/mel/html/mel_connectPolyShape.shtml\"";
+			menuItem
+				-divider 1;
+			menuItem
+		    		-label "Reset CPS Control Settings"
+		    		-c "cpsc_control resetUI";
+    			menuItem
+    				-divider 1;
+			menuItem
+		    		-label "Recall Window Layout 1"
+		    		-c "cpsc_windowLayout recallWindowLayout1 1";
+			menuItem
+		    		-label "Recall Window Layout 2"
+		    		-c "cpsc_windowLayout recallWindowLayout2 1";
+			menuItem
+		    		-label "Store Window Layout 1"
+		    		-c "cpsc_windowLayout storeWindowLayout1 0";
+			menuItem
+		    		-label "Store Window Layout 2"
+		    		-c "cpsc_windowLayout storeWindowLayout2 0";
+			menuItem
+				-checkBox 0
+		    		-label "Recall CPS Toolbox Layout"
+    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+    				cpsc_mUIrecallToolboxLayout;
+    			menuItem
+    				-divider 1;
+			menuItem
+		    		-label "Close CPS Control"
+		    		-c "deleteUI cpsc_ui";
+			scrollLayout -hst 16 -vst 16 -childResizable true -minChildWidth $uiWidth cpsc_scroll;
+				columnLayout -adjustableColumn 1;
+					frameLayout
+						-label "Geometry"
+						-labelAlign "center"
+						-cll true
+						-lw $uiWidth
+						-mh 3
+		                                -borderStyle "etchedIn"
+						-cc "cpsc_storeRecallUI store"
+						-ec "cpsc_storeRecallUI store"
+						-bv true
+						cpsc_ogFrame;
+						columnLayout -adjustableColumn 1;
+							rowLayout
+								-numberOfColumns 2
+								-columnWidth 1 68
+								-columnWidth 2 68
+								cpsc_rChangeSubdivisions;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscDecreaseSubdivisions.xpm"
+									-ann "Decrease subdivisions of selected CPS geometry"
+									-c "cpsc_control_geometry decreaseSubdivisions"
+									cpsc_test;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscIncreaseSubdivisions.xpm"
+									-ann "Increase subdivisions of selected CPS geometry"
+									-c "cpsc_control_geometry increaseSubdivisions";
+									popupMenu -button 3;
+						    			menuItem
+										-checkBox 0
+						    				-l "Enable Face Limit (xxx)"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mEnableFaceLimit;
+						    			menuItem
+						    				-l "Edit Face Limit"
+						    				-c "cpsSetFaceLimit"
+						    				cpsc_mEditFaceLimit;
+								setParent ..;
+							rowLayout
+								-numberOfColumns 4
+								-columnWidth 1 34
+								-columnWidth 2 34
+								-columnWidth 3 34
+								-columnWidth 4 34
+								cpsc_rToggleNodeState;
+								symbolButton
+									-w 34
+									-h 28
+									-image "cpscToggleSmoothNode.xpm"
+									-ann "Toggle smooth node active/inactive"
+									-c "cpsc_control_geometry toggleSmoothNode";
+								symbolButton
+									-w 34
+									-h 28
+									-image "cpscToggleTriangulationNode.xpm"
+									-ann "Toggle triangulation node active/inactive"
+									-c "cpsc_control_geometry toggleTriangulationNode";
+								symbolButton
+									-w 34
+									-h 28
+									-image "cpscToggleMirrorAndStitchNode.xpm"
+									-ann "Toggle mirror and stitch nodes active/inactive"
+									-c "cpsc_control_geometry toggleMirrorAndStitchNode";
+									popupMenu -button 3;
+						    			menuItem
+										-checkBox 1
+						    				-l "Toggle X Axis"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mToggleXAxis;
+						    			menuItem
+										-checkBox 1
+						    				-l "Toggle Y Axis"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mToggleYAxis;
+						    			menuItem
+										-checkBox 1
+						    				-l "Toggle Z Axis"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mToggleZAxis;
+						    			menuItem
+										-divider 1;
+						    			menuItem
+										-checkBox 0
+						    				-l "Toggle Stitching"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mToggleStitching;
+								symbolButton
+									-w 34
+									-h 28
+									-image "cpscToggleSoftEdgeNode.xpm"
+									-ann "Toggle soften edges node active/inactive"
+									-c "cpsc_control_geometry toggleSoftEdgeNode";
+								setParent ..;
+							rowLayout
+								-numberOfColumns 2
+								-columnWidth 1 68
+								-columnWidth 2 68
+								cpsc_rDisconnect;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscDisconnectPolyShape.xpm"
+									-ann "Disconnect proxy geometry from base mesh"
+									-c "cpsc_control_geometry disconnectPolyShape";
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscSnapVertices.xpm"
+									-ann "Snap border vertices to mirror plane (works only if the Mirror and Stitch option is being used)"
+									-c "cpsc_control_geometry snapVertices";
+								setParent ..;
+							rowLayout
+								-numberOfColumns 2
+								-columnWidth 1 68
+								-columnWidth 2 68
+								cpsc_rDeleteHistory;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscDeleteHistory.xpm"
+									-ann "Delete base geometry's history"
+									-c "cpsc_control_geometry deleteHistory";
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscDeleteResult.xpm"
+									-ann "Delete proxy geometry"
+									-c "cpsc_control_geometry deleteResult";
+								setParent ..;
+							setParent ..;
+						setParent ..;
+
+					frameLayout
+						-label "Display"
+						-labelAlign "center"
+						-cll true
+						-lw $uiWidth
+						-mh 3
+		                                -borderStyle "etchedIn"
+						-cc "cpsc_storeRecallUI store"
+						-ec "cpsc_storeRecallUI store"
+						-bv true
+						cpsc_dFrame;
+						columnLayout -adjustableColumn 1;
+							rowLayout
+								-numberOfColumns 2
+								-columnWidth 1 68
+								-columnWidth 2 68
+								cpsc_rToggleWireframe;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscToggleWireOnShaded.xpm"
+									-ann "Toggle Wireframe on Shaded display mode for active modeling panel"
+									-c "cpsc_control toggleWireframeOnShaded";
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscToggleHeadUpDisplay.xpm"
+									-ann "Toggle heads up display"
+									-c "cpsc_control toggleHeadUpDisplay";
+									popupMenu -button 3;
+						    			menuItem
+										-checkBox 1
+						    				-l "Toggle CPS Details"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mHUDcpsDetails;
+						    			menuItem
+						    				-divider 1;
+						    			menuItem
+										-checkBox 0
+						    				-l "Toggle Object Details"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mHUDobjectDetails;
+						    			menuItem
+										-checkBox 0
+						    				-l "Toggle Poly Count"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mHUDpolyCount;
+						    			menuItem
+										-checkBox 0
+						    				-l "Toggle Animation Details"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mHUDanimationDetails;
+						    			menuItem
+										-checkBox 0
+						    				-l "Toggle Frame Rate"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mHUDframeRate;
+						    			menuItem
+										-checkBox 0
+						    				-l "Toggle Camera Names"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mHUDcameraNames;
+						    			menuItem
+										-checkBox 0
+						    				-l "Toggle View Axis"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mHUDviewAxis;
+						    			menuItem
+										-checkBox 0
+						    				-l "Toggle Origin Axis"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mHUDoriginAxis;
+								setParent ..;
+							rowLayout
+								-numberOfColumns 2
+								-columnWidth 1 68
+								-columnWidth 2 68
+								cpsc_rToggleXray;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscToggleXray.xpm"
+									-ann "Toggle X-Ray display mode for active modeling panel"
+									-c "cpsc_control toggleXRay";
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscToggleXrayPerObject.xpm"
+									-ann "Toggle X-Ray display mode per object"
+									-c "cpsc_control toggleXRayPerObject";
+								setParent ..;
+							rowLayout
+								-numberOfColumns 2
+								-columnWidth 1 68
+								-columnWidth 2 68
+								cpsc_rToggleIsolateSelect;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscToggleIsolateSelect.xpm"
+									-ann "Toggle Isolate Select mode for active modeling panel"
+									-c "cpsc_control toggleIsolateSelect";
+									popupMenu -button 3;
+						    			menuItem
+										-checkBox 1
+						    				-l "Select Proxy"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mSelectResult;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscToggleDGEvalMode.xpm"
+									-ann "Toggle dependency graph evaluation mode (drag, demand, release)"
+									-c "cpsc_control toggleDGEvalMode";
+									popupMenu -button 3;
+						    			menuItem
+						    				-l "Performance Settings"
+						    				-c "PerformanceSettingsWindow";
+								setParent ..;
+							rowLayout
+								-numberOfColumns 2
+								-columnWidth 1 68
+								-columnWidth 2 68
+								cpsc_rToggleBackface;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscToggleBackfaceCulling.xpm"
+									-ann "Toggle backface culling for selected polygon geometry"
+									-c "cpsc_control toggleBackfaceCulling";
+									popupMenu -button 3;
+									radioMenuItemCollection;
+						    			menuItem
+										-radioButton 0
+						    				-l "Wire"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mBCwire;
+						    			menuItem
+										-radioButton 0
+						    				-l "Hard"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mBChard;
+						    			menuItem
+										-radioButton 1
+						    				-l "Full"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mBCfull;
+						    			menuItem
+										-divider 1;
+						    			menuItem
+						    				-l "Custom Polygon Display Options"
+						    				-c "CustomPolygonDisplayOptions";
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscToggleDisplayAffected.xpm"
+									-ann "Toggle wireframe coloring of affected objects."
+									-c "cpsc_control toggleDisplayAffected";
+								setParent ..;
+							rowLayout
+								-numberOfColumns 2
+								-columnWidth 1 68
+								-columnWidth 2 68
+								cpsc_rToggleVisibility;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscToggleVisibility.xpm"
+									-ann "Toggle proxy visibility"
+									-c "cpsc_control toggleProxyVisibility";
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscToggleKeepFacesTogether.xpm"
+									-ann "Toggle Keep Faces Together mode"
+									-c "cpsc_control toggleKeepFacesTogether";
+								setParent ..;
+							setParent ..;
+						setParent ..;
+					frameLayout
+						-label "Selection"
+						-labelAlign "center"
+						-cll true
+						-lw $uiWidth
+						-mh 3
+		                                -borderStyle "etchedIn"
+						-cc "cpsc_storeRecallUI store"
+						-ec "cpsc_storeRecallUI store"
+						-bv true
+						cpsc_rgFrame;
+						columnLayout -adjustableColumn 1;
+							rowLayout
+								-numberOfColumns 2
+								-columnWidth 1 68
+								-columnWidth 2 68
+								cpsc_rSelectProxy;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscSelectOriginal.xpm"
+									-ann "Select base mesh connected to the selected proxy geometry"
+									-c "cpsc_control selectOriginal";
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscSelectResult.xpm"
+									-ann "Select proxy mesh connected to the selected base geometry"
+									-c "cpsc_control selectResult";
+								setParent ..;
+							rowLayout
+								-numberOfColumns 3
+								-columnWidth 1 45
+								-columnWidth 2 45
+								-columnWidth 3 45
+								cpsc_rSelectionMode;
+								symbolButton
+									-w 45
+									-h 28
+									-image "cpscSelectVertex.xpm"
+									-ann "Switch to vertex selection mode"
+									-c "cpsc_control selectVertices";
+								symbolButton
+									-w 45
+									-h 28
+									-image "cpscSelectEdge.xpm"
+									-ann "Switch to edge selection mode"
+									-c "cpsc_control selectEdges";
+								symbolButton
+									-w 45
+									-h 28
+									-image "cpscSelectFace.xpm"
+									-ann "Switch to face selection mode"
+									-c "cpsc_control selectFaces";
+								setParent ..;
+							rowLayout
+								-numberOfColumns 3
+								-columnWidth 1 45
+								-columnWidth 2 45
+								-columnWidth 3 45
+								cpsc_rConvertSelection;
+								symbolButton
+									-w 45
+									-h 28
+									-image "cpscConvertVertex.xpm"
+									-ann "Convert selection to vertices"
+									-c "cpsc_control convertToVertices";
+								symbolButton
+									-w 45
+									-h 28
+									-image "cpscConvertEdge.xpm"
+									-ann "Convert selection to edges"
+									-c "cpsc_control convertToEdges";
+								symbolButton
+									-w 45
+									-h 28
+									-image "cpscConvertFace.xpm"
+									-ann "Convert selection to faces"
+									-c "cpsc_control convertToFaces";
+								setParent ..;
+							rowLayout
+								-numberOfColumns 3
+								-columnWidth 1 45
+								-columnWidth 2 45
+								-columnWidth 3 45
+								cpsc_rConstraint;
+								symbolButton
+									-w 45
+									-h 28
+									-image "cpscConstrainNone.xpm"
+									-ann "No polygon component selection constraint"
+									-c "cpsc_control constrainNone";
+									popupMenu -button 3;
+						    			menuItem
+						    				-l "Polygon Selection Constaints"
+						    				-c "tearOffPanel \"Polygon Selection Constraints\" \"polySelectionConstraintPanel\" 1";
+								symbolButton
+									-w 45
+									-h 28
+									-image "cpscConstrainInside.xpm"
+									-ann "Switch to inside polygon component selection constraint"
+									-c "cpsc_control constrainInside";
+									popupMenu -button 3;
+						    			menuItem
+						    				-l "Polygon Selection Constaints"
+						    				-c "tearOffPanel \"Polygon Selection Constraints\" \"polySelectionConstraintPanel\" 1";
+								symbolButton
+									-w 45
+									-h 28
+									-image "cpscConstrainBorder.xpm"
+									-ann "Switch to border polygon component selection constraint"
+									-c "cpsc_control constrainBorder";
+									popupMenu -button 3;
+						    			menuItem
+						    				-l "Polygon Selection Constaints"
+						    				-c "tearOffPanel \"Polygon Selection Constraints\" \"polySelectionConstraintPanel\" 1";
+								setParent ..;
+							rowLayout
+								-numberOfColumns 2
+								-columnWidth 1 68
+								-columnWidth 2 68
+								cpsc_rSelectionRegion;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscShrinkSelection.xpm"
+									-ann "Shrink the current polygon component selection region"
+									-c "cpsc_control shrinkSelection";
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscGrowSelection.xpm"
+									-ann "Expand the current polygon component selection region"
+									-c "cpsc_control growSelection";
+								setParent ..;
+							setParent ..;
+						setParent ..;
+					frameLayout
+						-label "Layer"
+						-labelAlign "center"
+						-cll true
+						-lw $uiWidth
+						-mh 3
+		                                -borderStyle "etchedIn"
+						-cc "cpsc_storeRecallUI store"
+						-ec "cpsc_storeRecallUI store"
+						-bv true
+						cpsc_lFrame;
+						columnLayout -adjustableColumn 1;
+							rowLayout
+								-numberOfColumns 2
+								-columnWidth 1 68
+								-columnWidth 2 68
+								cpsc_rToggleShading;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscToggleShading.xpm"
+									-ann "Toggle base geometry shading"
+									-c "cpsc_control toggleShading";
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscToggleEditable.xpm"
+									-ann "Toggle proxy geometry editable"
+									-c "cpsc_control toggleEditable";
+								setParent ..;
+							rowLayout
+								-numberOfColumns 2
+								-columnWidth 1 68
+								-columnWidth 2 68
+								cpsc_rMergeLayer;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscMergeLayer.xpm"
+									-ann "Merge multiple CPS layer nodes"
+									-c "cpsc_control mergeLayerNodes";
+									popupMenu -button 3;
+						    			menuItem
+										-checkBox 1
+						    				-l "Rename CPS Display Layer"
+						    				-c "cpsc_storeRecallUI store; cpsc_adjustUI;"
+						    				cpsc_mRenameLayer;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscMergeLayerMode.xpm"
+									-ann "Toggle import layer merge type"
+									-c "cpsc_control mergeLayerMode";
+								setParent ..;
+							setParent ..;
+						setParent ..;
+
+					frameLayout
+						-label "Tools"
+						-labelAlign "center"
+						-cll true
+						-lw $uiWidth
+						-mh 3
+		                                -borderStyle "etchedIn"
+						-cc "cpsc_storeRecallUI store"
+						-ec "cpsc_storeRecallUI store"
+						-bv true
+						cpsc_tFrame;
+						columnLayout -adjustableColumn 1;
+							rowLayout
+								-numberOfColumns 2
+								-columnWidth 1 68
+								-columnWidth 2 68
+								cpsc_rCPS;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscConnectPolyShape.xpm"
+									-ann "Connect Poly Shape"
+									-c "cpsc_control connectPolyShape";
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscConnectPolyShapeOptions.xpm"
+									-ann "Show/hide Connect Poly Shape Options"
+									-c "cpsc_control connectPolyShapeWindow";
+								setParent ..;
+							rowLayout
+								-numberOfColumns 1
+								-columnWidth 1 68
+								cpsc_rToolbox;
+								symbolButton
+									-w 68
+									-h 28
+									-image "cpscToolbox.xpm"
+									-ann "Show/hide CPS Toolbox"
+									-c "cpsc_control toolboxWindow";
+								setParent ..;
+							setParent ..;
+						setParent ..;
+					setParent ..;
+				setParent ..;
+			button
+				-label "Close"
+				-command "deleteUI cpsc_ui"
+				-h 15
+				cpsc_closeButton;
+			button
+				-label "I"
+				-ann "Recall window layout 1. RMB click to store current window layout."
+				-command "cpsc_windowLayout recallWindowLayout1 1"
+				-h 15
+				cpsc_pos1Button;
+				popupMenu -button 3;
+	    			menuItem
+	    				-l "Store Window Layout 1"
+	    				-c "cpsc_windowLayout storeWindowLayout1 0";
+			button
+				-label "II"
+				-ann "Recall window layout 2. RMB click to store current window layout."
+				-command "cpsc_windowLayout recallWindowLayout2 1"
+				-h 15
+				cpsc_pos2Button;
+				popupMenu -button 3;
+	    			menuItem
+	    				-l "Store Window Layout 2"
+	    				-c "cpsc_windowLayout storeWindowLayout2 0";
+
+	// set form layouts
+	formLayout -edit
+		-attachForm cpsc_scroll "top" 2
+		-attachForm cpsc_scroll "left" 2
+		-attachControl cpsc_scroll "bottom" 2 cpsc_closeButton
+		-attachForm cpsc_scroll "right" 2
+
+		-attachNone cpsc_closeButton "top"
+		-attachForm cpsc_closeButton "left" 2
+		-attachForm cpsc_closeButton "bottom" 2
+		-attachPosition cpsc_closeButton "right" 2 70
+
+		-attachControl cpsc_pos1Button "top" 2 cpsc_scroll
+		-attachPosition cpsc_pos1Button "left" 2 70
+		-attachForm cpsc_pos1Button "bottom" 2
+		-attachPosition cpsc_pos1Button "right" 2 85
+
+		-attachControl cpsc_pos2Button "top" 2 cpsc_scroll
+		-attachPosition cpsc_pos2Button "left" 2 85
+		-attachForm cpsc_pos2Button "bottom" 2
+		-attachPosition cpsc_pos2Button "right" 2 100
+		$cpsc_form;
+
+	cpsc_storeRecallUI recall;
+	cpsc_adjustUI;
+	showWindow cpsc_ui;
+
+	// create cpsControl exit scriptJob
+	scriptJob
+		-parent cpsc_ui
+		-uiDeleted cpsc_ui cpsc_hideHUD;
+}
+
+global proc cpsc_adjustUI()
+{
+	window -e -titleBar ( `menuItem -q -checkBox cpsc_mShowTitleBar` ) cpsc_ui;
+	window -e -menuBarVisible ( `menuItem -q -checkBox cpsc_mShowMenu` ) cpsc_ui;
+
+	if( `menuItem -q -checkBox cpsc_mShowCloseButton` )
+	{
+		if( `button -q -h cpsc_closeButton` == 1 )
+			window -e -h ( `window -q -h cpsc_ui` + 20 ) cpsc_ui;
+		button -e -h 20 -visible 1 cpsc_closeButton;
+		button -e -h 20 -visible 1 cpsc_pos1Button;
+		button -e -h 20 -visible 1 cpsc_pos2Button;
+	}
+	else
+	{
+		if( `button -q -h cpsc_closeButton` == 20 )
+			window -e -h ( `window -q -h cpsc_ui` - 20 ) cpsc_ui;
+		button -e -h 1 -visible 0 cpsc_closeButton;
+		button -e -h 1 -visible 0 cpsc_pos1Button;
+		button -e -h 1 -visible 0 cpsc_pos2Button;
+	}
+
+	// get face limit option var
+	if( !`optionVar -exists cpsf_faceLimit` )
+		// init face limit option var
+		optionVar -intValue cpsf_faceLimit 5000;
+
+	menuItem -e -l ( "Enable Face Limit (" + `optionVar -q cpsf_faceLimit` + ")" ) cpsc_mEnableFaceLimit;
+
+	// toggle icon rows invisible
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUIshading` cpsc_rToggleShading;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUIsubdivisions` cpsc_rChangeSubdivisions;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUItoggleNodeState` cpsc_rToggleNodeState;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUIdisconnect` cpsc_rDisconnect;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUIdeleteHistory` cpsc_rDeleteHistory;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUItoggleWireframe` cpsc_rToggleWireframe;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUItoggleXray` cpsc_rToggleXray;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUItoggleIsolateSelect` cpsc_rToggleIsolateSelect;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUItoggleBackface` cpsc_rToggleBackface;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUItoggleVisibility` cpsc_rToggleVisibility;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUIselectProxy` cpsc_rSelectProxy;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUIselectionMode` cpsc_rSelectionMode;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUIconvertSelection` cpsc_rConvertSelection;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUIconstraint` cpsc_rConstraint;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUIselectionRegion` cpsc_rSelectionRegion;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUImergeLayer` cpsc_rMergeLayer;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUIcps` cpsc_rCPS;
+	rowLayout -e -manage `menuItem -q -checkBox cpsc_mUItoolbox` cpsc_rToolbox;
+
+	// get cps hud option var
+	if( !`optionVar -exists cpsc_showHUD` )
+		// init face limit option var
+		optionVar -intValue cpsc_showHUD 1;
+	cpsc_initHUD;
+}
+
+global proc cpsc_storeRecallUI( string $mode )
+{
+	string $frameLayoutList[] = {
+		"cpsc_ogFrame",
+		"cpsc_rgFrame",
+		"cpsc_dFrame",
+		"cpsc_lFrame",
+		"cpsc_tFrame"
+		};
+
+	string $menuItemList[] = {
+		"cpsc_mShowTitleBar",
+		"cpsc_mShowMenu",
+		"cpsc_mShowCloseButton",
+		"cpsc_mUIshading",
+		"cpsc_mUIsubdivisions",
+		"cpsc_mUItoggleNodeState",
+		"cpsc_mUIdisconnect",
+		"cpsc_mUIdeleteHistory",
+		"cpsc_mUItoggleWireframe",
+		"cpsc_mUItoggleXray",
+		"cpsc_mUItoggleIsolateSelect",
+		"cpsc_mUItoggleBackface",
+		"cpsc_mUItoggleVisibility",
+		"cpsc_mUIselectProxy",
+		"cpsc_mUIselectionMode",
+		"cpsc_mUIconvertSelection",
+		"cpsc_mUIconstraint",
+		"cpsc_mUIselectionRegion",
+		"cpsc_mUImergeLayer",
+		"cpsc_mUIcps",
+		"cpsc_mUItoolbox",
+		"cpsc_mUIrecallToolboxLayout",
+		"cpsc_mEnableFaceLimit",
+		"cpsc_mToggleXAxis",
+		"cpsc_mToggleYAxis",
+		"cpsc_mToggleZAxis",
+		"cpsc_mToggleStitching",
+		"cpsc_mHUDcpsDetails",
+		"cpsc_mHUDobjectDetails",
+		"cpsc_mHUDpolyCount",
+		"cpsc_mHUDanimationDetails",
+		"cpsc_mHUDframeRate",
+		"cpsc_mHUDcameraNames",
+		"cpsc_mHUDviewAxis",
+		"cpsc_mHUDoriginAxis",
+		"cpsc_mSelectResult",
+		"cpsc_mRenameLayer"
+		};
+
+	string $menuItemRadioList[] = {
+		"cpsc_mBCwire",
+		"cpsc_mBChard",
+		"cpsc_mBCfull"
+		};
+
+	int $cnt;
+
+	if ( $mode == "store" )
+	{
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			optionVar -intValue $frameLayoutList[$cnt] `frameLayout -q -collapse $frameLayoutList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $menuItemList ); $cnt++ )
+			optionVar -intValue $menuItemList[$cnt] `menuItem -q -checkBox $menuItemList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $menuItemRadioList ); $cnt++ )
+			optionVar -intValue $menuItemRadioList[$cnt] `menuItem -q -radioButton $menuItemRadioList[$cnt]`;
+	}
+
+	if ( $mode == "recall" )
+	{
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			if ( `optionVar -exists $frameLayoutList[$cnt]` )
+				frameLayout -e -collapse `optionVar -q $frameLayoutList[$cnt]` $frameLayoutList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $menuItemList ); $cnt++ )
+			if ( `optionVar -exists $menuItemList[$cnt]` )
+				menuItem -e -checkBox `optionVar -q $menuItemList[$cnt]` $menuItemList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $menuItemRadioList ); $cnt++ )
+			if ( `optionVar -exists $menuItemRadioList[$cnt]` )
+				menuItem -e -radioButton `optionVar -q $menuItemRadioList[$cnt]` $menuItemRadioList[$cnt];
+	}
+
+	if ( $mode == "reset" )
+	{
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			optionVar -remove $frameLayoutList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $menuItemList ); $cnt++ )
+			optionVar -remove $menuItemList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $menuItemRadioList ); $cnt++ )
+			optionVar -remove $menuItemRadioList[$cnt];
+	}
+}
+
+// Confirm Dialog
+proc string cpsc_confirmDialog( string $message, int $type )
+{
+	if( $type == 1 )
+	{
+			return ( `confirmDialog
+			-title "Connect Poly Shape"
+			-message $message
+	    		-button "OK"
+	    		-defaultButton "OK"
+			-cancelButton "OK"
+			-dismissString "OK"` );
+	}
+
+	if( $type == 2 )
+	{
+			return ( `confirmDialog
+			-title "Connect Poly Shape"
+			-message $message
+	    		-button "Yes"
+	    		-button "No"
+	    		-defaultButton "No"
+			-cancelButton "No"
+			-dismissString "No"` );
+	}
+}
+
+global proc string cpsc_HUDbaseFaces()
+{
+	string $baseList[] = `cpsc_filterOriginal`;
+
+	// get connected base shape nodes
+	string $proxyList[] = `cpsc_filterResult`;
+	for( $cnt = 0; $cnt < size( $proxyList ); $cnt++ )
+		$baseList[size( $baseList )] = `cpsc_getOriginalFromResult $proxyList[$cnt]`;
+
+	$baseList = `AWRemoveDuplicateStringsFromStringArray $baseList`;
+
+	string $postString;
+
+	if( size( $baseList ) > 1 )
+		$postString = " (" + size( $baseList ) + ")";
+
+	if( !size( $baseList ) )
+		return "-";
+	else
+	{
+		int $faceCount;
+
+		for( $cnt = 0; $cnt < size( $baseList ); $cnt++ )
+		{
+			int $faces[] = `polyEvaluate -face $baseList[$cnt]`;
+			$faceCount += $faces[0];
+		}
+		return ( $faceCount + $postString );
+	}
+}
+
+global proc string cpsc_HUDproxyFaces()
+{
+	string $proxyList[] = `cpsc_filterResult`;
+
+	// get connect proxy shape nodes
+	string $baseList[] = `cpsc_filterOriginal`;
+	for( $cnt = 0; $cnt < size( $baseList ); $cnt++ )
+		$proxyList = AWAppendStringsToStringArray( $proxyList, `cpsc_getResultFromOriginal $baseList[$cnt]` );
+	$proxyList = `AWRemoveDuplicateStringsFromStringArray $proxyList`;
+
+	string $postString;
+
+	if( size( $proxyList ) > 1 )
+		$postString = " (" + size( $proxyList ) + ")";
+
+	if( !size( $proxyList ) )
+		return "-";
+	else
+	{
+		int $faceCount;
+
+		for( $cnt = 0; $cnt < size( $proxyList ); $cnt++ )
+		{
+			int $faces[] = `polyEvaluate -face $proxyList[$cnt]`;
+			$faceCount += $faces[0];
+		}
+		return ( $faceCount + $postString );
+	}
+}
+
+global proc string cpsc_HUDsubdivisions()
+{
+	string $baseList[] = `cpsc_filterOriginal`;
+
+	// get connected base shape nodes
+	string $proxyList[] = `cpsc_filterResult`;
+	for( $cnt = 0; $cnt < size( $proxyList ); $cnt++ )
+		$baseList[size( $baseList )] = `cpsc_getOriginalFromResult $proxyList[$cnt]`;
+
+	$baseList = `AWRemoveDuplicateStringsFromStringArray $baseList`;
+
+	if( size( $baseList ) != 1 )
+		return "-";
+	else
+	{
+		// get smooth node
+		string $smoothNode = `cpsc_getPolySmoothNode $baseList[0]`;
+		if( size( $smoothNode ) )
+		{
+			// node disabled ?
+			if( !`getAttr ( $smoothNode + ".nodeState" )` )
+			{
+				string $outString;
+				if( `attributeQuery -node $smoothNode -exists "divisions"` )
+					$outString += `getAttr ( $smoothNode + ".divisions" )` + " ";
+
+				if( `attributeQuery -node $smoothNode -exists "continuity"` )
+				{
+					float $cont = `getAttr ( $smoothNode + ".continuity" )`;
+					$outString += "C" + `substring ( string( $cont ) ) 1 3` + " ";
+				}
+
+				if( `attributeQuery -node $smoothNode -exists "keepBorder"` )
+				{
+					if( `getAttr ( $smoothNode + ".keepBorder" )` )
+						$outString += "KB";
+				}
+
+				return $outString;
+			}
+			else
+				return "disabled";
+		}
+		else
+			return "off";
+	}
+}
+
+global proc string cpsc_HUDtriangulation()
+{
+	string $baseList[] = `cpsc_filterOriginal`;
+
+	// get connected base shape nodes
+	string $proxyList[] = `cpsc_filterResult`;
+	for( $cnt = 0; $cnt < size( $proxyList ); $cnt++ )
+		$baseList[size( $baseList )] = `cpsc_getOriginalFromResult $proxyList[$cnt]`;
+
+	$baseList = `AWRemoveDuplicateStringsFromStringArray $baseList`;
+
+	if( size( $baseList ) != 1 )
+		return "-";
+	else
+	{
+		// get triangulation node
+		string $triNode = `cpsc_getPolyTriangulateNode $baseList[0]`;
+		if( size( $triNode ) )
+		{
+			// node disabled ?
+			if( !`getAttr ( $triNode + ".nodeState" )` )
+				return "On";
+			else
+				return "disabled";
+		}
+		else
+			return "off";
+	}
+}
+
+global proc string cpsc_HUDmirrorAndStitch()
+{
+	string $baseList[] = `cpsc_filterOriginal`;
+
+	// get connected base shape nodes
+	string $proxyList[] = `cpsc_filterResult`;
+	for( $cnt = 0; $cnt < size( $proxyList ); $cnt++ )
+		$baseList[size( $baseList )] = `cpsc_getOriginalFromResult $proxyList[$cnt]`;
+
+	$baseList = `AWRemoveDuplicateStringsFromStringArray $baseList`;
+
+	if( size( $baseList ) != 1 )
+		return "-";
+	else
+	{
+		// get chipOff nodes
+		string $chipOffNodes[] = `cpsc_getPolyChipOffNodes $baseList[0]`;
+		string $axis;
+
+		for( $cnt = size( $chipOffNodes ) - 1; $cnt >= 0; $cnt-- )
+		{
+			// get chipOffNode axis
+			if( `getAttr( $chipOffNodes[$cnt] + ".scaleX" )` == -1.0 )
+			{
+				// node disabled ?
+				if( !`getAttr ( $chipOffNodes[$cnt] + ".nodeState" )` )
+					$axis += "X";
+				else
+					$axis += "x";
+			}
+			if( `getAttr( $chipOffNodes[$cnt] + ".scaleY" )` == -1.0 )
+			{
+				// node disabled ?
+				if( !`getAttr ( $chipOffNodes[$cnt] + ".nodeState" )` )
+					$axis += "Y";
+				else
+					$axis += "y";
+			}
+			if( `getAttr( $chipOffNodes[$cnt] + ".scaleZ" )` == -1.0 )
+			{
+			 	// node disabled ?
+				if( !`getAttr ( $chipOffNodes[$cnt] + ".nodeState" )` )
+					$axis += "Z";
+				else
+					$axis += "z";
+			}
+		}
+
+		// get merge nodes (only use 1st)
+		string $mergeNodes[] = `cpsc_getPolyMergeNodes $baseList[0]`;
+
+		// get merge node state
+		if( size( $mergeNodes ) )
+		{
+			// node disabled ?
+			if( !`getAttr ( $mergeNodes[0] + ".nodeState" )` )
+				$axis += " S";
+		}
+
+		if( !size( $axis ) )
+			$axis = "off";
+
+		return $axis;
+	}
+}
+
+global proc string cpsc_HUDsoftenEdges()
+{
+	string $baseList[] = `cpsc_filterOriginal`;
+
+	// get connected base shape nodes
+	string $proxyList[] = `cpsc_filterResult`;
+	for( $cnt = 0; $cnt < size( $proxyList ); $cnt++ )
+		$baseList[size( $baseList )] = `cpsc_getOriginalFromResult $proxyList[$cnt]`;
+
+	$baseList = `AWRemoveDuplicateStringsFromStringArray $baseList`;
+
+	if( size( $baseList ) != 1 )
+		return "-";
+	else
+	{
+		// get softEdge node
+		string $softNode = `cpsc_getPolySoftEdgeNode $baseList[0]`;
+
+		if( $softNode != "" )
+		{
+			// node disabled ?
+			if( !`getAttr ( $softNode + ".nodeState" )` )
+				return ( string( `getAttr ( $softNode + ".angle" )` ) );
+			else
+				return "disabled";
+		}
+		else
+			return "off";
+	}
+}
+
+proc int cpsc_nextFreeHUDBlock( int $section )
+{
+	// get all HUDs
+	string $hudList[] = `headsUpDisplay -lh`;
+	int $blockAllocList[];
+
+	// get all allocated blocks in specified section
+	for( $hud in $hudList )
+		if( `headsUpDisplay -q -section $hud` == $section )
+			$blockAllocList[int( `headsUpDisplay -q -block $hud` )] = 1;
+
+	// search for free block
+	int $cnt;
+	for( $cnt = 0; $cnt < size( $blockAllocList ); $cnt++ )
+		if( !$blockAllocList[$cnt] )
+			break;
+
+	return $cnt;
+}
+
+global proc cpsc_initHUD()
+{
+	int $hudVisible = `optionVar -q cpsc_showHUD`;
+
+	// CPS base faces HUD
+	if( !`headsUpDisplay -exists HUDcpsBaseFaces` )
+		headsUpDisplay
+			-section	0
+			-block		`cpsc_nextFreeHUDBlock 0`
+			-blockSize	"small"
+			-label		"CPS Base Faces:"
+			-labelFontSize	"small"
+			-labelWidth	120
+			-command	"cpsc_HUDbaseFaces"
+			-event		"SelectionChanged"
+			-nodeChanges	"attributeChange"
+			-visible	$hudVisible
+			HUDcpsBaseFaces;
+	else
+		headsUpDisplay
+			-e
+			-visible	$hudVisible
+			HUDcpsBaseFaces;
+
+	// CPS proxy faces HUD
+	if( !`headsUpDisplay -exists HUDcpsProxyFaces` )
+		headsUpDisplay
+			-section	0
+			-block		`cpsc_nextFreeHUDBlock 0`
+			-blockSize	"small"
+			-label		"CPS Proxy Faces:"
+			-labelFontSize	"small"
+			-labelWidth	120
+			-command	"cpsc_HUDproxyFaces"
+			-event		"SelectionChanged"
+			-nodeChanges	"attributeChange"
+			-visible	$hudVisible
+			HUDcpsProxyFaces;
+	else
+		headsUpDisplay
+			-e
+			-visible	$hudVisible
+			HUDcpsProxyFaces;
+
+	// CPS subdivisions HUD
+	if( !`headsUpDisplay -exists HUDcpsSubdivisions` )
+		headsUpDisplay
+			-section	0
+			-block		`cpsc_nextFreeHUDBlock 0`
+			-blockSize	"small"
+			-label		"CPS Subdivisions:"
+			-labelFontSize	"small"
+			-labelWidth	120
+			-command	"cpsc_HUDsubdivisions"
+			-event		"SelectionChanged"
+			-nodeChanges	"attributeChange"
+			-visible	$hudVisible
+			HUDcpsSubdivisions;
+	else
+		headsUpDisplay
+			-e
+			-visible	$hudVisible
+			HUDcpsSubdivisions;
+
+	// CPS triangulation HUD
+	if( !`headsUpDisplay -exists HUDcpsTriangulation` )
+		headsUpDisplay
+			-section	0
+			-block		`cpsc_nextFreeHUDBlock 0`
+			-blockSize	"small"
+			-label		"CPS Triangulation:"
+			-labelFontSize	"small"
+			-labelWidth	120
+			-command	"cpsc_HUDtriangulation"
+			-event		"SelectionChanged"
+			-nodeChanges	"attributeChange"
+			-visible	$hudVisible
+			HUDcpsTriangulation;
+	else
+		headsUpDisplay
+			-e
+			-visible	$hudVisible
+			HUDcpsTriangulation;
+
+	// CPS mirror and stitch HUD
+	if( !`headsUpDisplay -exists HUDcpsMirrorAndStitch` )
+		headsUpDisplay
+			-section	0
+			-block		`cpsc_nextFreeHUDBlock 0`
+			-blockSize	"small"
+			-label		"CPS Mirror & Stitch:"
+			-labelFontSize	"small"
+			-labelWidth	120
+			-command	"cpsc_HUDmirrorAndStitch"
+			-event		"SelectionChanged"
+			-nodeChanges	"attributeChange"
+			-visible	$hudVisible
+			HUDcpsMirrorAndStitch;
+	else
+		headsUpDisplay
+			-e
+			-visible	$hudVisible
+			HUDcpsMirrorAndStitch;
+
+	// CPS soften edges HUD
+	if( !`headsUpDisplay -exists HUDcpsSoftenEdges` )
+		headsUpDisplay
+			-section	0
+			-block		`cpsc_nextFreeHUDBlock 0`
+			-blockSize	"small"
+			-label		"CPS Soften Edges:"
+			-labelFontSize	"small"
+			-labelWidth	120
+			-command	"cpsc_HUDsoftenEdges"
+			-event		"SelectionChanged"
+			-nodeChanges	"attributeChange"
+			-visible	$hudVisible
+			HUDcpsSoftenEdges;
+	else
+		headsUpDisplay
+			-e
+			-visible	$hudVisible
+			HUDcpsSoftenEdges;
+}
+
+global proc cpsc_hideHUD()
+{
+	if( `headsUpDisplay -exists HUDcpsBaseFaces` )
+		headsUpDisplay -e -visible 0 HUDcpsBaseFaces;
+
+	if( `headsUpDisplay -exists HUDcpsBaseFaces` )
+		headsUpDisplay -e -visible 0 HUDcpsProxyFaces;
+
+	if( `headsUpDisplay -exists HUDcpsBaseFaces` )
+		headsUpDisplay -e -visible 0 HUDcpsSubdivisions;
+
+	if( `headsUpDisplay -exists HUDcpsTriangulation` )
+		headsUpDisplay -e -visible 0 HUDcpsTriangulation;
+
+	if( `headsUpDisplay -exists HUDcpsMirrorAndStitch` )
+		headsUpDisplay -e -visible 0 HUDcpsMirrorAndStitch;
+
+	if( `headsUpDisplay -exists HUDcpsSoftenEdges` )
+		headsUpDisplay -e -visible 0 HUDcpsSoftenEdges;
+}
+
+// get full path
+proc string cpsc_getFullPathFromShape( string $dag )
+{
+	string $fullPath;
+	string $buffer[];
+
+	// get full path to parent node
+	$buffer = `listRelatives -p -fullPath $dag`;
+	$fullPath = $buffer[0];
+	tokenize $dag "|" $buffer;
+	$fullPath += "|" + $buffer[size( $buffer ) - 1];
+
+	return $fullPath;
+}
+
+// get get previous CPS node
+// return node name, node type (both "" if no valid node was found)
+proc string[] cpsc_getPreviousNode( string $node )
+{
+	string $prevNode[];
+	string $nodeType;
+
+	// check connection attribute (does exist in CPS V3.0 +)
+	if( `attributeQuery -node $node -exists "cpsConnect"` )
+	{
+		if( !`connectionInfo -isDestination ( $node + ".cpsConnect" )` )
+			return {"", ""};
+		$prevNode = `listConnections ( $node + ".cpsConnect" )`;
+		$nodeType = `nodeType $prevNode[0]`;
+		return { $prevNode[0], $nodeType };
+	}
+	// check valid CPS node types (for CPS versions prior to V3.0)
+	// if node type is not valid return unknown object ("") to avoid error messages
+	else
+	{
+		string $validNodes[] = {
+			"mesh",			".inMesh",
+			"transformGeometry",	".inputGeometry",
+			"polySoftEdge",		".inputPolymesh",
+			"polyTriangulate",	".inputPolymesh",
+			"polySmoothFace",	".inputPolymesh",
+			"polyNormal",		".inputPolymesh",
+			"polyMergeVert",	".inputPolymesh",
+			"polyChipOff",		".inputPolymesh"
+			};
+	
+		int $found = 0;
+		for( $cnt = 0; $cnt < size( $validNodes ); $cnt++ )
+		{
+			if( `nodeType $node` == $validNodes[$cnt * 2] )
+			{
+				if( !`connectionInfo -isDestination ( $node + $validNodes[$cnt * 2 + 1] )` )
+					break;
+			
+				$prevNode = `listConnections ( $node + $validNodes[$cnt * 2 + 1] )`;
+				$nodeType = `nodeType $prevNode[0]`;
+				break;
+			}
+		}
+	}
+
+	return { $prevNode[0], $nodeType };
+}
+
+// get polyChipOff nodes from CPS base geometry
+global proc string[] cpsc_getPolyMergeNodes( string $object )
+{
+	string $polyMergeList[] = {};
+
+	// get proxy nodes from base (we only use the 1st node)
+	string $prevNode[] = `cpsc_getResultFromOriginal $object`;
+
+	do
+	{
+		$prevNode = `cpsc_getPreviousNode $prevNode[0]`;
+
+		if( $prevNode[1] == "polyMergeVert" )
+			$polyMergeList[size( $polyMergeList )] = $prevNode[0];
+	}
+	while( $prevNode[0] != "" );
+
+	return $polyMergeList;
+}
+
+// get polyChipOff nodes from CPS base geometry
+global proc string[] cpsc_getPolyChipOffNodes( string $object )
+{
+	string $polyChipOffList[] = {};
+
+	// get proxy nodes from base (we only use the 1st node)
+	string $prevNode[] = `cpsc_getResultFromOriginal $object`;
+
+	do
+	{
+		$prevNode = `cpsc_getPreviousNode $prevNode[0]`;
+
+		if( $prevNode[1] == "polyChipOff" )
+			$polyChipOffList[size( $polyChipOffList )] = $prevNode[0];
+	}
+	while( $prevNode[0] != "" );
+
+	return $polyChipOffList;
+}
+
+// get smooth node from CPS base geometry
+global proc string cpsc_getPolySmoothNode( string $object )
+{
+	string $polySmoothNode;
+
+	// get proxy nodes from base (we only use the 1st node)
+	string $prevNode[] = `cpsc_getResultFromOriginal $object`;
+
+	do
+	{
+		$prevNode = `cpsc_getPreviousNode $prevNode[0]`;
+
+		if( $prevNode[1] == "polySmoothFace" )
+		{
+			$polySmoothNode = $prevNode[0];
+			return $polySmoothNode;
+		}
+	}
+	while( $prevNode[0] != "" );
+
+	return "";
+}
+
+// get triangulation node from CPS base geometry
+global proc string cpsc_getPolyTriangulateNode( string $object )
+{
+	string $polyTriangulateNode;
+
+	// get proxy nodes from base (we only use the 1st node)
+	string $prevNode[] = `cpsc_getResultFromOriginal $object`;
+
+	do
+	{
+		$prevNode = `cpsc_getPreviousNode $prevNode[0]`;
+
+		if( $prevNode[1] == "polyTriangulate" )
+		{
+			$polyTriangulateNode = $prevNode[0];
+			return $polyTriangulateNode;
+		}
+	}
+	while( $prevNode[0] != "" );
+
+	return "";
+}
+
+// get softEdge node from CPS base geometry
+global proc string cpsc_getPolySoftEdgeNode( string $object )
+{
+	string $polySoftEdgeNode;
+
+	// get proxy nodes from base (we only use the 1st node)
+	string $prevNode[] = `cpsc_getResultFromOriginal $object`;
+
+	do
+	{
+		$prevNode = `cpsc_getPreviousNode $prevNode[0]`;
+
+		if( $prevNode[1] == "polySoftEdge" )
+		{
+			$polySoftEdgeNode = $prevNode[0];
+			return( $prevNode[0] );
+		}
+	}
+	while( $prevNode[0] != "" );
+
+	return "";
+}
+
+// return all proxy nodes connected to given base
+global proc string[] cpsc_getResultFromOriginal( string $original )
+{
+	string $result[], $connection[], $buffer[];
+
+	// get all connections from cpsOut
+	if( `attributeQuery -node $original -exists "cpsOut"` && `connectionInfo -isSource ( $original + ".cpsOut" )` )
+		$connection = `connectionInfo -dfs ( $original + ".cpsOut" )`;
+
+	// check if at least one connected node has a cpsIn connection
+	for( $cCnt = 0; $cCnt < size( $connection ); $cCnt++ )
+	{
+		tokenize $connection[$cCnt] "." $buffer;
+
+		if( `nodeType $buffer[0]` == "mesh" && $buffer[1] == "cpsIn" )
+			$result[size( $result )] = `cpsc_getFullPathFromShape $buffer[0]`;
+	}
+
+	return $result;
+}
+
+// return base node connected to given proxy
+global proc string cpsc_getOriginalFromResult( string $result )
+{
+	string $connection, $buffer[];
+
+	// get all connections from cpsOut
+	if( `attributeQuery -node $result -exists "cpsIn"` && `connectionInfo -isDestination ( $result + ".cpsIn" )` )
+		$connection = `connectionInfo -sfd ( $result + ".cpsIn" )`;
+
+	if( size( $connection ) )
+	{
+		// check if connected node has a cpsOut connection
+		tokenize $connection "." $buffer;
+	
+		if( `nodeType $buffer[0]` == "mesh" && $buffer[1] == "cpsOut" )
+			return `cpsc_getFullPathFromShape $buffer[0]`;
+		else
+			return "";
+	}
+	else
+		return "";
+}
+
+// check connection to display layer, if unused delete them
+proc cpsc_checkDisplayLayer()
+{
+	// get list of display layer nodes
+	string $layerList[] = `ls -type "displayLayer"`;
+
+	// filter layer containing cpsOriginal or cpsResult ID
+	for( $lCnt = 0; $lCnt < size( $layerList ); $lCnt++ )
+	{
+		if( `attributeQuery -node $layerList[$lCnt] -exists "cpsOriginal"` || `attributeQuery -node $layerList[$lCnt] -exists "cpsResult"` )
+		{
+			// check if layer has connections
+			if( !`connectionInfo -isSource ( $layerList[$lCnt] + ".drawInfo" )` )
+			{
+				// delete empty layer
+				delete $layerList[$lCnt];
+				print ( "Empty CPS layer removed " + $layerList[$lCnt] + "\n" );
+			}
+		}
+	}
+}
+
+// disconnect transform attributes
+proc cpsc_disconnectTransform( string $original, string $result )
+{
+	string $attrList[] = {
+		"translateX",
+		"translateY",
+		"translateZ",
+		"rotateX",
+		"rotateY",
+		"rotateZ",
+		"scaleX",
+		"scaleY",
+		"scaleZ",
+		"shearXY",
+		"shearXZ",
+		"shearYZ" };
+
+	for( $cnt = 0; $cnt < size( $attrList ); $cnt++ )
+	{
+		if( `isConnected ( $original + "." + $attrList[$cnt] ) ( $result + "." + $attrList[$cnt] )` )
+			disconnectAttr ( $original + "." + $attrList[$cnt] ) ( $result + "." + $attrList[$cnt] );
+	}
+}
+
+// filter original shape nodes from selection
+global proc string[] cpsc_filterOriginal()
+{
+	string $selList[] = `filterExpand -fullPath 1 -sm 12`;
+	string $connection[], $buffer[], $originalList[];
+
+	// get hilite selection
+	string $hiliteList[] = `ls -hilite`;
+
+	for( $cnt = 0; $cnt < size( $hiliteList ); $cnt++ )
+	{
+		string $shapes[] = `listRelatives -fullPath -shapes $hiliteList[$cnt]`;
+		$selList = AWAppendStringsToStringArray( $selList, $shapes );
+	}
+
+	$selList = `AWRemoveDuplicateStringsFromStringArray $selList`;
+
+	// filter proxy CPS nodes
+	for( $cnt = 0; $cnt < size( $selList ); $cnt++ )
+	{
+		for( $sCnt = 0; $sCnt < size( $selList ); $sCnt++ )
+		{
+			// get all connections from cpsOut
+			if( `attributeQuery -node $selList[$sCnt] -exists "cpsOut"` && `connectionInfo -isSource ( $selList[$sCnt] + ".cpsOut" )` )
+			{
+				$connection = `connectionInfo -dfs ( $selList[$sCnt] + ".cpsOut" )`;
+
+				// check if at least one proxy node is connected
+				for( $cCnt = 0; $cCnt < size( $connection ); $cCnt++ )
+				{
+					tokenize $connection[$cCnt] "." $buffer;
+	
+					if( `nodeType $buffer[0]` == "mesh" && $buffer[1] == "cpsIn" )
+						$originalList[size( $originalList )] = $selList[$sCnt];
+						break;
+				}
+			}
+		}
+	}
+
+	$originalList = `AWRemoveDuplicateStringsFromStringArray $originalList`;
+
+	return $originalList;
+}
+
+// filter proxy shape nodes from selection
+global proc string[] cpsc_filterResult()
+{
+	string $selList[] = `filterExpand -fullPath 1 -sm 12`;
+	string $connection, $buffer[], $resultList[];
+
+	// get hilite selection
+	string $hiliteList[] = `ls -hilite`;
+
+	for( $cnt = 0; $cnt < size( $hiliteList ); $cnt++ )
+	{
+		string $shapes[] = `listRelatives -fullPath -shapes $hiliteList[$cnt]`;
+		$selList = AWAppendStringsToStringArray( $selList, $shapes );
+	}
+
+	$selList = `AWRemoveDuplicateStringsFromStringArray $selList`;
+
+	// filter proxy CPS nodes
+	for( $cnt = 0; $cnt < size( $selList ); $cnt++ )
+	{
+		for( $sCnt = 0; $sCnt < size( $selList ); $sCnt++ )
+		{
+			// get all connections from cpsIn
+			if( `attributeQuery -node $selList[$sCnt] -exists "cpsIn"` && `connectionInfo -isDestination ( $selList[$sCnt] + ".cpsIn" )` )
+			{
+				$connection = `connectionInfo -sfd ( $selList[$sCnt] + ".cpsIn" )`;
+
+				if( size( $connection ) )
+				{
+					tokenize $connection "." $buffer;
+
+					if( `nodeType $buffer[0]` == "mesh" && $buffer[1] == "cpsOut" )
+						$resultList[size( $resultList )] = $selList[$sCnt];
+				}
+			}
+		}
+	}
+
+	$resultList = `AWRemoveDuplicateStringsFromStringArray $resultList`;
+
+	return $resultList;
+}
+
+
+
+
+global proc cpsc_windowLayout( string $function, int $mode )
+{
+	if( $function == "recallWindowLayout1" )
+	{
+		if( `optionVar -exists cpsc_windowPos1` && `optionVar -exists cpsc_windowSize1` )
+		{
+			window -e -h 1 cpsc_ui; // temporarily shrink window to avoid flickering
+
+			int $pos[] = `optionVar -q cpsc_windowPos1`;
+			window -e -tlc $pos[0] $pos[1] cpsc_ui;
+
+			int $size[] = `optionVar -q cpsc_windowSize1`;
+			window -e -wh $size[0] $size[1] cpsc_ui;
+		}
+		else
+			print "CPS Control window layout 1 not defined. Use the right mouse button to store a window layout.\n";
+
+		if( `window -exists cpst_ui` && `menuItem -q -checkBox cpsc_mUIrecallToolboxLayout` && $mode )
+			cpst_windowLayout recallWindowLayout1 0;
+	}
+
+	if( $function == "recallWindowLayout2" )
+	{
+		if( `optionVar -exists cpsc_windowPos2` && `optionVar -exists cpsc_windowSize2` )
+		{
+			window -e -h 1 cpsc_ui; // temporarily shrink window to avoid flickering
+
+			int $pos[] = `optionVar -q cpsc_windowPos2`;
+			window -e -tlc $pos[0] $pos[1] cpsc_ui;
+
+			int $size[] = `optionVar -q cpsc_windowSize2`;
+			window -e -wh $size[0] $size[1] cpsc_ui;
+		}
+		else
+			print "CPS Control window layout 2 not defined. Use the right mouse button to store a window layout.\n";
+
+		if( `window -exists cpst_ui` && `menuItem -q -checkBox cpsc_mUIrecallToolboxLayout` && $mode )
+			cpst_windowLayout recallWindowLayout2 0;
+	}
+
+	if( $function == "storeWindowLayout1" )
+	{
+		int $pos[] = `window -q -tlc cpsc_ui`;
+		optionVar -intValue cpsc_windowPos1 $pos[0];
+		optionVar -intValueAppend cpsc_windowPos1 $pos[1];
+
+		int $size[] = `window -q -wh cpsc_ui`;
+		optionVar -intValue cpsc_windowSize1 $size[0];
+		optionVar -intValueAppend cpsc_windowSize1 $size[1];
+
+		print "Stored CPS Control window layout 1\n";
+	}
+
+	if( $function == "storeWindowLayout2" )
+	{
+		int $pos[] = `window -q -tlc cpsc_ui`;
+		optionVar -intValue cpsc_windowPos2 $pos[0];
+		optionVar -intValueAppend cpsc_windowPos2 $pos[1];
+
+		int $size[] = `window -q -wh cpsc_ui`;
+		optionVar -intValue cpsc_windowSize2 $size[0];
+		optionVar -intValueAppend cpsc_windowSize2 $size[1];
+
+		print "Stored CPS Control window layout 2\n";
+	}
+}
+
+//
+// Main procedure
+//
+global proc cpsc_control ( string $function )
+{
+	if( $function == "toggleShading" )
+	{
+		string $layerList[], $baseList[];
+
+		// get list of display layer nodes
+		$layerList = `ls -type "displayLayer"`;
+
+		// filter base layer containing cpsOriginal ID
+		for( $lCnt = 0; $lCnt < size( $layerList ); $lCnt++ )
+			if( `attributeQuery -node $layerList[$lCnt] -exists "cpsOriginal"` )
+				$baseList[size( $baseList )] = $layerList[$lCnt];
+
+		// check if layer exists
+		for( $cnt = 0; $cnt < size( $baseList ); $cnt++ )
+			setAttr ( $baseList[$cnt] + ".shading" ) ( !`getAttr ( $baseList[$cnt] + ".shading" )` );
+
+		if( !size( $baseList ) )
+			error "No CPS Base display layer found";
+	}
+
+	if( $function == "toggleEditable" )
+	{
+		string $layerList[], $proxyList[];
+
+		// get list of display layer nodes
+		$layerList = `ls -type "displayLayer"`;
+
+		// filter proxy layer containing cpsResult ID
+		for( $lCnt = 0; $lCnt < size( $layerList ); $lCnt++ )
+			if( `attributeQuery -node $layerList[$lCnt] -exists "cpsResult"` )
+				$proxyList[size( $proxyList )] = $layerList[$lCnt];
+
+		// check if layer exists
+		for( $cnt = 0; $cnt < size( $proxyList ); $cnt++ )
+			setAttr ( $proxyList[$cnt] + ".displayType" ) ( !`getAttr ( $proxyList[$cnt] + ".displayType" )` * 2 ); // toggle 0 / 2
+
+		if( !size( $proxyList ) )
+			error "No CPS Proxy display layer found";
+	}
+
+	if( $function == "mergeLayerNodes" )
+	{
+		string $layerList[], $cpsLayerList[], $originalList[], $resultList[];
+
+		// get list of layer nodes
+		$layerList = `ls -type "displayLayer"`;
+
+		// filter layer containing cpsOriginal or cpsResult ID
+		for( $lCnt = 0; $lCnt < size( $layerList ); $lCnt++ )
+		{
+			if( `attributeQuery -node $layerList[$lCnt] -exists "cpsOriginal"` || `attributeQuery -node $layerList[$lCnt] -exists "cpsResult"` )
+			{
+				// check if layer has connections (not empty)
+				if( `connectionInfo -isSource ( $layerList[$lCnt] + ".drawInfo" )` )
+				{
+					$cpsLayerList[size( $cpsLayerList )] = $layerList[$lCnt];
+
+					if( `attributeQuery -node $layerList[$lCnt] -exists "cpsOriginal"` )
+						$originalList[size( $originalList )] = $layerList[$lCnt];
+
+					if( `attributeQuery -node $layerList[$lCnt] -exists "cpsResult"` )
+						$resultList[size( $resultList )] = $layerList[$lCnt];
+				}
+				// delete empty layer
+				else
+				{
+					delete $layerList[$lCnt];
+					print ( "Empty CPS layer removed " + $layerList[$lCnt] + "\n" );
+				}
+			}
+		}
+
+		// check if at least one base and proxy layer node exists
+		if( !size( $cpsLayerList ) )
+			error "No valid CPS layer node found. Merge tool cancelled.";
+		if( !size( $originalList ) )
+			error "No valid CPS base layer node found. Merge tool cancelled.";
+		if( !size( $resultList ) )
+			error "No valid CPS proxy layer node found. Merge tool cancelled.";
+
+		// assign all base objects to first cpsBase layer
+		for( $cnt = 1; $cnt < size( $originalList ); $cnt++ )
+		{
+			// get list of currently connected shapes
+			string $connectList[] = `listConnections -shapes 1 ( $originalList[$cnt] + ".drawInfo" )`;
+
+			for( $cCnt = 0; $cCnt < size( $connectList ); $cCnt++ )
+				connectAttr -f ( $originalList[0] + ".drawInfo" ) ( $connectList[$cCnt] + ".drawOverride" );
+
+			delete $originalList[$cnt];
+			print ( "Display layer deleted: " + $originalList[$cnt] + "\n" );
+		}
+
+		// assign all proxy objects to first cpsProxy layer
+		for( $cnt = 1; $cnt < size( $resultList ); $cnt++ )
+		{
+			// get list of currently connected shapes
+			string $connectList[] = `listConnections -shapes 1 ( $resultList[$cnt] + ".drawInfo" )`;
+
+			for( $cCnt = 0; $cCnt < size( $connectList ); $cCnt++ )
+				connectAttr -f ( $resultList[0] + ".drawInfo" ) ( $connectList[$cCnt] + ".drawOverride" );
+
+			delete $resultList[$cnt];
+			print ( "Display layer deleted: " + $resultList[$cnt] + "\n" );
+		}
+
+		// check, if no more display layer connections => delete display layer
+		cpsc_checkDisplayLayer;
+
+		// rename CPS display layer
+		if( `menuItem -q -checkBox cpsc_mRenameLayer` )
+		{
+			// check if base layer must be renamed to cpsBase
+			if( $originalList[0] != "cpsBase" )
+			{
+				// does an object with this name already exist?
+				if( !`objExists "cpsBase"` )
+					rename $originalList[0] "cpsBase";
+				else
+					rename $originalList[0] "cpsBase#";
+			}
+	
+			// check if proxy layer must be renamed to cpsProxy
+			if( $resultList[0] != "cpsProxy" )
+			{
+				// does an object with this name already exist?
+				if( !`objExists "cpsProxy"` )
+					rename $resultList[0] "cpsProxy";
+				else
+					rename $resultList[0] "cpsProxy#";
+			}
+		}
+	}
+
+	if( $function == "mergeLayerMode" )
+	{
+		if( `editDisplayLayerGlobals -q -mergeType` != 2 )
+		{
+			editDisplayLayerGlobals -mergeType 2;
+			cpsc_confirmDialog "Switched import layer node merge type to \"By Name\".\nRestart Maya to take changes into account." 1;
+		}
+		else
+		{
+			editDisplayLayerGlobals -mergeType 0;
+			cpsc_confirmDialog "Switched import layer node merge type to \"None\".\nRestart Maya to take changes into account." 1;
+		}
+	}
+
+	if( $function == "toggleHeadUpDisplay" )
+	{
+		if( `menuItem -q -checkBox cpsc_mHUDcpsDetails` )
+		{
+			optionVar -intValue cpsc_showHUD ( !`optionVar -q cpsc_showHUD` );
+			cpsc_initHUD;
+		}
+
+		if( `menuItem -q -checkBox cpsc_mHUDobjectDetails` )
+			setObjectDetailsVisibility( !`optionVar -q objectDetailsVisibility` );
+
+		if( `menuItem -q -checkBox cpsc_mHUDpolyCount` )
+			setPolyCountVisibility( !`optionVar -q polyCountVisibility` );
+	
+		if( `menuItem -q -checkBox cpsc_mHUDanimationDetails` )
+			setAnimationDetailsVisibility( !`optionVar -q animationDetailsVisibility` );
+
+		if( `menuItem -q -checkBox cpsc_mHUDframeRate` )
+			setFrameRateVisibility( !`optionVar -q frameRateVisibility` );
+
+		if( `menuItem -q -checkBox cpsc_mHUDcameraNames` )
+			setCameraNamesVisibility( !`optionVar -q cameraNamesVisibility` );
+
+		if( `menuItem -q -checkBox cpsc_mHUDviewAxis` )
+			setViewAxisVisibility( !`optionVar -q viewAxisVisibility` );
+
+		if( `menuItem -q -checkBox cpsc_mHUDoriginAxis` )
+			toggleAxis -o ( !`toggleAxis -q -o` );
+	}
+
+	if( $function == "connectPolyShapeWindow" )
+	{
+		if( `window -q -exists cps_ui` )
+		{
+			if( `window -q -iconify cps_ui` )
+				window -e -iconify 0 cps_ui;
+			else if( !`window -q -visible cps_ui` )
+				window -e -visible 1 cps_ui;
+			else
+				deleteUI cps_ui;
+		}
+		else
+			connectPolyShape;
+	}
+
+	if( $function == "connectPolyShape" )
+	{
+		// main script already loaded ?
+		if( !`exists cps_main` )
+			// no -> source main script
+			source connectPolyShape;
+
+		cps_createUI doNotShow;
+		cps_main;
+	}
+
+	if( $function == "toolboxWindow" )
+	{
+		if( `window -q -exists cpst_ui` )
+		{
+			if( `window -q -iconify cpst_ui` )
+				window -e -iconify 0 cpst_ui;
+			else if( !`window -q -visible cpst_ui` )
+				window -e -visible 1 cpst_ui;
+			else
+				deleteUI cpst_ui;
+		}
+		else
+			cpsToolbox;
+	}
+
+	if( $function == "selectOriginal" )
+	{
+		// get selected proxy shape nodes
+		string $result[] = `cpsc_filterResult`;
+
+		if( size( $result ) )
+		{
+			// clear current selection
+			select -clear;
+
+			for( $cnt = 0; $cnt < size( $result ); $cnt++ )
+			{
+				string $original = `cpsc_getOriginalFromResult $result[$cnt]`;
+	
+				if( size( $original ) )
+				{
+					string $parent[] = `listRelatives -p -fullPath $original`;
+					select -add $parent[0];
+				}
+			}
+		}
+	}
+
+	if( $function == "selectResult" )
+	{
+		// get selected base shape nodes
+		string $original[] = `cpsc_filterOriginal`;
+
+		if( size( $original ) )
+		{
+			// clear current selection
+			select -clear;
+
+			for( $cnt = 0; $cnt < size( $original ); $cnt++ )
+			{
+				string $result[] = `cpsc_getResultFromOriginal $original[$cnt]`;
+	
+				for( $rCnt = 0; $rCnt < size( $result ); $rCnt++ )
+				{
+					string $parent[] = `listRelatives -p -fullPath $result[$rCnt]`;
+					select -add $parent[0];
+				}
+			}
+		}
+	}
+
+	if( $function == "toggleXRay" )
+	{
+		// get last panel that recieved focus
+		string $panel = `getPanel -wf`;
+
+		if( `getPanel -typeOf $panel` == "modelPanel" )
+			// toggle xray mode
+			modelEditor -e -xray ( !`modelEditor -q -xray $panel` ) $panel;
+	}
+
+	if( $function == "toggleXRayPerObject" )
+	{
+		// get selected shape nodes
+		string $result[] = `ls -sl -dag -s`;
+
+		for( $cnt = 0; $cnt < size( $result ); $cnt++ )
+		{
+			int $xState[] = `displaySurface -q -xRay $result[$cnt]`;
+
+			// toggle xray mode per object
+			displaySurface -xRay ( !$xState[0] ) $result[$cnt];
+		}
+	}
+
+	if( $function == "toggleWireframeOnShaded" )
+	{
+		// get last panel that received focus
+		string $panel = `getPanel -wf`;
+
+		if( `getPanel -typeOf $panel` == "modelPanel" )
+			// toggle wos mode
+			modelEditor -e -wos ( !`modelEditor -q -wos $panel` ) $panel;
+	}
+
+	if( $function == "toggleIsolateSelect" )
+	{
+		// get last panel that received focus
+		string $panel = `getPanel -wf`;
+
+		if( `getPanel -typeOf $panel` == "modelPanel" )
+		{
+			if( !`isolateSelect -q -state $panel` )
+			{
+				if( `menuItem -q -checkBox cpsc_mSelectResult` )
+				{
+					// select proxy automatically
+					string $original[] = `cpsc_filterOriginal`;
+					for( $cnt = 0; $cnt < size( $original ); $cnt++ )
+					{
+						string $result[] = `cpsc_getResultFromOriginal $original[$cnt]`;
+						select -add $result;
+					}
+				}
+
+				// toggle isolate select mode on
+				enableIsolateSelect $panel 1;
+				isolateSelect -state 1 $panel;
+			}
+			else
+			{
+				// toggle isolate select mode off
+				enableIsolateSelect $panel 0;
+				isolateSelect -state 0 $panel;
+			}
+		}
+	}
+
+	if( $function == "selectVertices" )
+	{
+		selectMode -component; // switch to component selection mode
+		selectType -allComponents 0 -polymeshVertex 1; // switch to vertex selection mode
+	}
+
+	if( $function == "selectEdges" )
+	{
+		selectMode -component; // switch to component selection mode
+		selectType -allComponents 0 -polymeshEdge 1; // switch to vertex selection mode
+	}
+
+	if( $function == "selectFaces" )
+	{
+		selectMode -component; // switch to component selection mode
+		selectType -allComponents 0 -polymeshFace 1; // switch to vertex selection mode
+	}
+
+	if( $function == "convertToVertices" )
+	{
+		ConvertSelectionToVertices;
+		selectMode -component; // switch to component selection mode
+		selectType -allComponents 0 -polymeshVertex 1; // switch to vertex selection mode
+	}
+
+	if( $function == "convertToEdges" )
+	{
+		ConvertSelectionToEdges;
+		selectMode -component; // switch to component selection mode
+		selectType -allComponents 0 -polymeshEdge 1; // switch to vertex selection mode
+	}
+
+	if( $function == "convertToFaces" )
+	{
+		ConvertSelectionToFaces;
+		selectMode -component; // switch to component selection mode
+		selectType -allComponents 0 -polymeshFace 1; // switch to vertex selection mode
+	}
+
+	if( $function == "constrainNone" )
+	{
+		polySelectConstraint -mode 0 -where 0 -type 0x8009;
+	}
+
+	if( $function == "constrainInside" )
+	{
+		polySelectConstraint -mode 2 -where 2 -type 0x8009;
+	}
+
+	if( $function == "constrainBorder" )
+	{
+		polySelectConstraint -mode 2 -where 1 -type 0x8009;
+	}
+
+	if( $function == "shrinkSelection" )
+	{
+		PolySelectTraverse 2;
+	}
+
+	if( $function == "growSelection" )
+	{
+		PolySelectTraverse 1;
+	}
+
+	if( $function == "toggleBackfaceCulling" )
+	{
+		string $selList[] = `filterExpand -fullPath 1 -sm 12`;
+	
+		// get hilite selection
+		string $hiliteList[] = `ls -hilite`;
+	
+		for( $cnt = 0; $cnt < size( $hiliteList ); $cnt++ )
+		{
+			string $shapes[] = `listRelatives -fullPath -shapes $hiliteList[$cnt]`;
+			$selList = AWAppendStringsToStringArray( $selList, $shapes );
+		}
+	
+		$selList = `AWRemoveDuplicateStringsFromStringArray $selList`;
+
+		for( $cnt = 0; $cnt < size( $selList ); $cnt++ )
+		{
+			if( !`getAttr( $selList[$cnt] + ".backfaceCulling" )` )
+			{
+				if( `menuItem -q -radioButton cpsc_mBCwire` )
+					setAttr( $selList[$cnt] + ".backfaceCulling" ) 1;
+				if( `menuItem -q -radioButton cpsc_mBChard` )
+					setAttr( $selList[$cnt] + ".backfaceCulling" ) 2;
+				if( `menuItem -q -radioButton cpsc_mBCfull` )
+					setAttr( $selList[$cnt] + ".backfaceCulling" ) 3;
+			}
+			else
+				setAttr( $selList[$cnt] + ".backfaceCulling" ) 0;
+		}
+	}
+
+	if( $function == "toggleDGEvalMode" )
+	{
+		global int $gRefreshMode;
+		$gRefreshMode = ( $gRefreshMode + 1 ) % 3;
+
+		if( $gRefreshMode == 0 )
+		{
+			manipOptions -refreshMode 0;
+			animDisplay -modelUpdate interactive;
+			print "Dependency graph evaluation switched to \"drag\" mode\n";
+		}
+
+		if( $gRefreshMode == 1 )
+		{
+			manipOptions -refreshMode 2;
+			animDisplay -modelUpdate none;
+			print "Dependency graph evaluation switched to \"demand\" mode\n";
+		}
+
+		if( $gRefreshMode == 2 )
+		{
+			manipOptions -refreshMode 1;
+			animDisplay -modelUpdate delayed;
+			print "Dependency graph evaluation switched to \"release\" mode\n";
+		}
+	}
+
+	if( $function == "resetUI" )
+	{
+		if( `cpsc_confirmDialog "Reset CPS Control settings?" 2` == "Yes" )
+		{
+			cpsc_storeRecallUI reset;
+			cpsControl;
+		}
+	}
+
+	if( $function == "toggleDisplayAffected" )
+	{
+		if( `displayAffected -q` )
+		{
+			displayAffected 0;
+			print "Wireframe coloring of affected geometry disabled.\n";
+		}
+		else
+		{
+			displayAffected 1;
+			print "Wireframe coloring of affected geometry enabled.\n";
+		}
+	}
+
+	if( $function == "toggleKeepFacesTogether" )
+	{
+		togglePolyMoveComponents;
+		if( `optionVar -q polyKeepFacetsGrouped` )
+			print "Keep Faces Together enabled\n";
+		else
+			print "Keep Faces Together disabled\n";
+	}
+
+	if( $function == "toggleProxyVisibility" )
+	{
+		// get selected proxy shape nodes
+		string $resultList[] = `cpsc_filterResult`;
+
+		// get selected base shape nodes
+		string $baseList[] = `cpsc_filterOriginal`;
+		for( $cnt = 0; $cnt < size( $baseList ); $cnt++ )
+			$resultList = AWAppendStringsToStringArray( $resultList, `cpsc_getResultFromOriginal $baseList[$cnt]` );
+		$resultList = `AWRemoveDuplicateStringsFromStringArray $resultList`;
+	
+		for( $proxyNode in $resultList )
+			setAttr ( $proxyNode + ".visibility" ) ( !`getAttr ( $proxyNode + ".visibility" )` );
+
+		// force HUD update
+		select;
+	}
+}
+
+
+//
+// CPS Control geometry functions
+//
+global proc cpsc_control_geometry ( string $function )
+{
+	if( $function == "decreaseSubdivisions" )
+	{
+		// get selected base shape nodes
+		string $original[] = `cpsc_filterOriginal`;
+
+		// get proxy shape nodes
+		string $result[] = `cpsc_filterResult`;
+		for( $cnt = 0; $cnt < size( $result ); $cnt++ )
+			$original[size( $original )] = `cpsc_getOriginalFromResult $result[$cnt]`;
+
+		$original = `AWRemoveDuplicateStringsFromStringArray $original`;
+
+		for( $cnt = 0; $cnt < size( $original ); $cnt++ )
+		{
+			string $parent[] = `listRelatives -fullPath -parent $original[$cnt]`;
+
+			if( `attributeQuery -node $parent[0] -exists "subdivisions"` && `connectionInfo -isSource ( $parent[0] + ".subdivisions" )` )
+				if( `getAttr ( $parent[0] + ".subdivisions" )` > 0 )
+					setAttr ( $parent[0] + ".subdivisions" ) ( `getAttr ( $parent[0] + ".subdivisions" )` - 1 );
+		}
+	}
+
+	if( $function == "increaseSubdivisions" )
+	{
+		int $faceLimit =	`optionVar -q cpsf_faceLimit`;
+		int $enableFaceLimit =	`menuItem -q -checkBox cpsc_mEnableFaceLimit`;
+
+		// get selected base shape nodes
+		string $original[] = `cpsc_filterOriginal`;
+
+		// get proxy shape nodes
+		string $result[] = `cpsc_filterResult`;
+		for( $cnt = 0; $cnt < size( $result ); $cnt++ )
+			$original[size( $original )] = `cpsc_getOriginalFromResult $result[$cnt]`;
+
+		$original = `AWRemoveDuplicateStringsFromStringArray $original`;
+
+		for( $cnt = 0; $cnt < size( $original ); $cnt++ )
+		{
+			string $parent[] = `listRelatives -fullPath -parent $original[$cnt]`;
+
+			if( `attributeQuery -node $parent[0] -exists "subdivisions"` && `connectionInfo -isSource ( $parent[0] + ".subdivisions" )` )
+				if( `getAttr ( $parent[0] + ".subdivisions" )` < 4 )
+				{
+					// get proxy list to check face limit
+					string $resultList[] = `cpsc_getResultFromOriginal $original[$cnt]`;
+					int $limitExceeded = 0;
+
+					for( $rCnt = 0; $rCnt < size( $resultList ); $rCnt++ )
+					{
+						int $faceCount[] = `polyEvaluate -face $resultList[$rCnt]`;
+
+						if( $enableFaceLimit && $faceCount[0] * 4 > $faceLimit )
+						{
+							warning ( "CPS shape " + $resultList[$rCnt] + " will exceed the limit of " + $faceLimit + " faces. Subdivision level not increased." );
+							$limitExceeded = 1;
+						}
+					}
+
+					if( !$limitExceeded )
+						setAttr ( $parent[0] + ".subdivisions" ) ( `getAttr ( $parent[0] + ".subdivisions" )` + 1 );
+				}
+		}
+	}
+
+	if( $function == "toggleSmoothNode" )
+	{
+		string $baseList[] = `cpsc_filterOriginal`;
+
+		// get connected base shape nodes
+		string $proxyList[] = `cpsc_filterResult`;
+		for( $cnt = 0; $cnt < size( $proxyList ); $cnt++ )
+			$baseList[size( $baseList )] = `cpsc_getOriginalFromResult $proxyList[$cnt]`;
+	
+		$baseList = `AWRemoveDuplicateStringsFromStringArray $baseList`;
+	
+		for( $baseNode in $baseList )
+		{
+			// get smooth node
+			string $smoothNode = `cpsc_getPolySmoothNode $baseNode`;
+
+			if( $smoothNode != "" )
+			{
+				if( `getAttr ( $smoothNode + ".nodeState" )` )
+					setAttr ( $smoothNode + ".nodeState" ) 0;
+				else
+					setAttr ( $smoothNode + ".nodeState" ) 1;
+			}
+		}
+
+		// force HUD update
+		select;
+	}
+
+	if( $function == "toggleTriangulationNode" )
+	{
+		string $baseList[] = `cpsc_filterOriginal`;
+
+		// get connected base shape nodes
+		string $proxyList[] = `cpsc_filterResult`;
+		for( $cnt = 0; $cnt < size( $proxyList ); $cnt++ )
+			$baseList[size( $baseList )] = `cpsc_getOriginalFromResult $proxyList[$cnt]`;
+	
+		$baseList = `AWRemoveDuplicateStringsFromStringArray $baseList`;
+	
+		for( $baseNode in $baseList )
+		{
+			// get triangulation node
+			string $triNode = `cpsc_getPolyTriangulateNode $baseNode`;
+
+			if( $triNode != "" )
+			{
+				if( `getAttr ( $triNode + ".nodeState" )` )
+					setAttr ( $triNode + ".nodeState" ) 0;
+				else
+					setAttr ( $triNode + ".nodeState" ) 1;
+			}
+		}
+
+		// force HUD update
+		select;
+	}
+
+	if( $function == "toggleMirrorAndStitchNode" )
+	{
+		string $baseList[] = `cpsc_filterOriginal`;
+
+		// get connected base shape nodes
+		string $proxyList[] = `cpsc_filterResult`;
+		for( $cnt = 0; $cnt < size( $proxyList ); $cnt++ )
+			$baseList[size( $baseList )] = `cpsc_getOriginalFromResult $proxyList[$cnt]`;
+	
+		$baseList = `AWRemoveDuplicateStringsFromStringArray $baseList`;
+	
+		for( $baseNode in $baseList )
+		{
+			// get polyChipOff nodes
+			string $chipOffNodes[] = `cpsc_getPolyChipOffNodes $baseNode`;
+
+			for( $chipOffNode in $chipOffNodes )
+			{
+				// get chipOffNode axis
+				if( ( `getAttr( $chipOffNode + ".scaleX" )` == -1.0 && `menuItem -q -checkBox cpsc_mToggleXAxis` ) ||
+				    ( `getAttr( $chipOffNode + ".scaleY" )` == -1.0 && `menuItem -q -checkBox cpsc_mToggleYAxis` ) ||
+				    ( `getAttr( $chipOffNode + ".scaleZ" )` == -1.0 && `menuItem -q -checkBox cpsc_mToggleZAxis` ) )
+				{
+					if( `getAttr ( $chipOffNode + ".nodeState" )` )
+						setAttr ( $chipOffNode + ".nodeState" ) 0;
+					else
+						setAttr ( $chipOffNode + ".nodeState" ) 1;
+				}
+			}
+
+			// get polyMerge nodes
+			string $mergeNodes[] = `cpsc_getPolyMergeNodes $baseNode`;
+
+			for( $mergeNode in $mergeNodes )
+			{
+				if( `menuItem -q -checkBox cpsc_mToggleStitching` )
+				{
+					if( `getAttr ( $mergeNode + ".nodeState" )` )
+						setAttr ( $mergeNode + ".nodeState" ) 0;
+					else
+						setAttr ( $mergeNode + ".nodeState" ) 1;
+				}
+			}
+		}
+
+		// force HUD update
+		select;
+	}
+
+	if( $function == "toggleSoftEdgeNode" )
+	{
+		string $baseList[] = `cpsc_filterOriginal`;
+
+		// get connected base shape nodes
+		string $proxyList[] = `cpsc_filterResult`;
+		for( $cnt = 0; $cnt < size( $proxyList ); $cnt++ )
+			$baseList[size( $baseList )] = `cpsc_getOriginalFromResult $proxyList[$cnt]`;
+	
+		$baseList = `AWRemoveDuplicateStringsFromStringArray $baseList`;
+	
+		for( $baseNode in $baseList )
+		{
+			// get triangulation node
+			string $softNode = `cpsc_getPolySoftEdgeNode $baseNode`;
+
+			if( $softNode != "" )
+			{
+				if( `getAttr ( $softNode + ".nodeState" )` )
+					setAttr ( $softNode + ".nodeState" ) 0;
+				else
+					setAttr ( $softNode + ".nodeState" ) 1;
+			}
+		}
+
+		// force HUD update
+		select;
+	}
+
+	if( $function == "disconnectPolyShape" )
+	{
+		string $originalList[], $origList[], $resultList[], $originalConvert[], $result[];
+
+		// get selected proxy shape nodes
+		$resultList = `cpsc_filterResult`;
+
+		// get selected base shape nodes
+		$origList = `cpsc_filterOriginal`;
+		for( $cnt = 0; $cnt < size( $origList ); $cnt++ )
+			$resultList = AWAppendStringsToStringArray( $resultList, `cpsc_getResultFromOriginal $origList[$cnt]` );
+		$resultList = `AWRemoveDuplicateStringsFromStringArray $resultList`;
+
+		if( size( $resultList ) )
+		{
+			// get base nodes from result list
+			for( $cnt = 0; $cnt < size( $resultList ); $cnt++ )
+				$originalList[size( $originalList )] = `cpsc_getOriginalFromResult $resultList[$cnt]`;
+
+			int $delete = 0;
+			string $parent[], $children[], $tmp;
+
+			if( `cpsc_confirmDialog "Delete base geometry?" 2` == "Yes" )
+				$delete = 1;
+	
+			for( $cnt = 0; $cnt < size( $resultList ); $cnt++ )
+			{
+				// delete attributes from resulting node
+				if( `attributeQuery -node $resultList[$cnt] -exists "cpsIn"` )
+					deleteAttr ( $resultList[$cnt] + ".cpsIn" );
+				if( `attributeQuery -node $resultList[$cnt] -exists "cpsConnect"` )
+					deleteAttr ( $resultList[$cnt] + ".cpsConnect" );
+
+				// delete history
+				delete -ch $resultList[$cnt];
+
+				// remove proxy object from display layer
+				string $connect[] = `listConnections -d 0 -s 1 ( $resultList[$cnt] + ".drawOverride" )`;
+				if( `attributeQuery -node $connect[0] -exists "cpsResult"` )
+					disconnectAttr ( $connect[0] + ".drawInfo" ) ( $resultList[$cnt] + ".drawOverride" );
+
+				// disconnect transform attributes
+				string $oParent[] = `listRelatives -fullPath -p $originalList[$cnt]`;
+				string $rParent[] = `listRelatives -fullPath -p $resultList[$cnt]`;
+				cpsc_disconnectTransform $oParent[0] $rParent[0];
+
+				// delete base geometry
+				if( $delete )
+				{
+					// get parent transform node
+					$parent = `listRelatives -p -fullPath $originalList[$cnt]`;
+
+					// check further output connections from the base geometry before deleting the mesh
+					string $connectOut[] = `cpsc_getResultFromOriginal( $originalList[$cnt] )`;
+
+					if( !size( $connectOut ) )
+					{
+						// delete shape
+						delete $originalList[$cnt];
+	
+						// check hierarchy upward if this was the only child and delete empty transform nodes
+						do
+						{	
+							// get children of transform node
+							$children = `listRelatives -c -fullPath $parent[0]`;
+	
+							$tmp = $parent[0];
+							$parent = `listRelatives -p -fullPath $parent[0]`;
+	
+							// no further children => delete parent transform node also
+							if( !size( $children ) )
+								delete $tmp;
+						}
+						while( size( $parent ) );
+					}
+				}
+				// keep base geometry
+				else
+				{
+					// check, if further destination nodes are connected to base geometry, otherwise delete attributes,
+					// reset render and display flags and remove mesh from display layer
+					string $connectOut[] = `cpsc_getResultFromOriginal( $originalList[$cnt] )`;
+
+					if( !size( $connectOut ) )
+					{
+						// get parent transform node
+						$parent = `listRelatives -p -fullPath $originalList[$cnt]`;
+
+						// delete attributes from shape node
+						if( `attributeQuery -node $originalList[$cnt] -exists "cpsOut"` )
+							deleteAttr ( $originalList[$cnt] + ".cpsOut" );
+						if( `attributeQuery -node $originalList[$cnt] -exists "cpsConnect"` )
+							deleteAttr ( $originalList[$cnt] + ".cpsConnect" );
+
+						// delete attributes from transform node
+						if( `attributeQuery -node $parent[0] -exists "subdivisions"` )
+							deleteAttr ( $parent[0] + ".subdivisions" );
+						if( `attributeQuery -node $parent[0] -exists "continuity"` )
+							deleteAttr ( $parent[0] + ".continuity" );
+						if( `attributeQuery -node $parent[0] -exists "keepBorder"` )
+							deleteAttr ( $parent[0] + ".keepBorder" );
+						if( `attributeQuery -node $parent[0] -exists "angle"` )
+							deleteAttr ( $parent[0] + ".angle" );
+
+						// restore modified render flags
+						setAttr ( $originalList[$cnt] + ".visibleInReflections" ) 1;
+						setAttr ( $originalList[$cnt] + ".visibleInRefractions" ) 1;
+						setAttr ( $originalList[$cnt] + ".castsShadows" ) 1;
+						setAttr ( $originalList[$cnt] + ".primaryVisibility" ) 1;
+
+						// remove base object from display layer
+						string $connect[] = `listConnections -d 0 -s 1 ( $originalList[$cnt] + ".drawOverride" )`;
+						if( `attributeQuery -node $connect[0] -exists "cpsOriginal"` )
+							disconnectAttr ( $connect[0] + ".drawInfo" ) ( $originalList[$cnt] + ".drawOverride" );
+					}
+				}
+
+				// check, if no more display layer connections => delete display layer
+				cpsc_checkDisplayLayer;
+			}
+		}
+		else
+			error "No valid CPS proxy geometry selected";
+	}
+
+	if( $function == "snapVertices" )
+	{
+		if( `window -q -exists cpsv_ui` )
+		{
+			if( `window -q -iconify cpsv_ui` )
+				window -e -iconify 0 cpsv_ui;
+			else if( !`window -q -visible cpsv_ui` )
+				window -e -visible 1 cpsv_ui;
+			else
+				deleteUI cpsv_ui;
+		}
+		else
+			cpsSnapVertices;
+	}
+
+	if( $function == "deleteHistory" )
+	{
+		string $original[] = `cpsc_filterOriginal`;
+
+		if( !size( $original ) )
+		{
+			error "No valid CPS proxy geometry selected\n";
+			return;
+		}
+
+		for( $cnt = 0; $cnt < size( $original ); $cnt++ )
+		{
+			delete -ch $original[$cnt];
+			print ( "History deleted from object \"" + $original[$cnt] + "\"\n" );
+		}
+
+	}
+
+	if( $function == "deleteResult" )
+	{
+		// get selected base shape nodes
+		string $original[] = `cpsc_filterOriginal`;
+		string $children[], $tmp, $parent[];
+
+		if( size( $original ) )
+		{
+			for( $cnt = 0; $cnt < size( $original ); $cnt++ )
+			{
+				string $result[] = `cpsc_getResultFromOriginal $original[$cnt]`;
+	
+				// delete all proxy nodes (remove empty transform nodes)
+				for( $rCnt = 0; $rCnt < size( $result ); $rCnt++ )
+				{
+					// get parent transform node
+					$parent = `listRelatives -p $result[$rCnt]`;
+
+					// delete shape
+					delete $result[$rCnt];
+
+					// check hierarchy upward if this was the only child and delete empty transform nodes
+					do
+					{	
+						// get children of transform node
+						$children = `listRelatives -c -fullPath $parent[0]`;
+
+						$tmp = $parent[0];
+						$parent = `listRelatives -p -fullPath $parent[0]`;
+
+						// no further children => delete parent transform node also
+						if( !size( $children ) )
+							delete $tmp;
+					}
+					while( size( $parent ) );
+				}
+
+				// delete attributes from base object
+				$parent = `listRelatives -p -fullPath $original[$cnt]`;
+				if( `attributeQuery -node $original[$cnt] -exists "cpsOut"` )
+					deleteAttr ( $original[$cnt] + ".cpsOut" );
+				if( `attributeQuery -node $original[$cnt] -exists "cpsConnect"` )
+					deleteAttr ( $original[$cnt] + ".cpsConnect" );
+				if( `attributeQuery -node $parent[0] -exists "subdivisions"` )
+					deleteAttr ( $parent[0] + ".subdivisions" );
+				if( `attributeQuery -node $parent[0] -exists "continuity"` )
+					deleteAttr ( $parent[0] + ".continuity" );
+				if( `attributeQuery -node $parent[0] -exists "keepBorder"` )
+					deleteAttr ( $parent[0] + ".keepBorder" );
+				if( `attributeQuery -node $parent[0] -exists "angle"` )
+					deleteAttr ( $parent[0] + ".angle" );
+
+				// remove base object from display layer
+				string $connect[] = `listConnections -d 0 -s 1 ( $original[$cnt] + ".drawOverride" )`;
+				if( `attributeQuery -node $connect[0] -exists "cpsOriginal"` )
+					disconnectAttr ( $connect[0] + ".drawInfo" ) ( $original[$cnt] + ".drawOverride" );
+			}
+		
+			// check, if no more display layer connections => delete display layer
+			cpsc_checkDisplayLayer;
+		}
+		else
+			error "No valid CPS base geometry selected";
+	}
+}
+
+// end of script

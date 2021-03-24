@@ -1,0 +1,116 @@
+//-----------------------------------------------------------------------------
+// Finds all materials in the scene, and fixes them up so multiple artists
+// can easily work on the same file + see the textures
+//-----------------------------------------------------------------------------
+
+
+//-----------------------------------------------------------------------------
+// Fix up material paths for triangles in the scene
+//-----------------------------------------------------------------------------
+proc getMeshShaders( string $mesh )
+	{	
+	// prepare to iterate across the mesh:
+	int $faceCount[] = `polyEvaluate -f $mesh`;
+
+	for ($counter = 0; $counter < $faceCount[0]; $counter++)
+		{
+		// begin with the material applied to this face
+		string $testFace = $mesh + ".f[" + $counter + "]";
+		smdGetShader $testFace;
+		}
+	}
+
+
+//-----------------------------------------------------------------------------
+// Fix up shader
+//-----------------------------------------------------------------------------
+proc fixUpShader( string $shader, string $shaderField )
+	{
+	string $texture = getRelativeMaterialsrcName( `fileNodeInfo -f $shader $shaderField` );
+	if ( `size $texture` > 0 )
+		{
+		// Fix up the name...
+		string $node = `fileNodeInfo -n $shader $shaderField`;
+		if ( `size $node` > 0 )
+			{
+			string $newTextureName = getFullMaterialsrcPath( $texture );
+			setAttr ($node + ".ftn") -type "string" $newTextureName;
+			}
+		}
+	}
+
+
+//-----------------------------------------------------------------------------
+// Main entry point for fixing up textures in the scene
+//-----------------------------------------------------------------------------
+global proc texFixup ()
+	{
+	source "paths";
+	source "smdExport";
+	source "vmt";
+	source "smd/fileNodeInfo";
+
+	global string $smdShaderGrps[];
+	global string $smdFileTx[];
+	global string $smdBadShaderWarning[];
+
+	clear $smdShaderGrps;
+	clear $smdFileTx;
+	clear $smdBadShaderWarning;
+	
+	computeVMTDirectories();
+	 
+	// analyze the scene, finding all unique shaders
+	string $meshList[];
+	$meshList = `ls -type mesh -ni`;
+	for ($eachMesh in $meshList)
+		{
+		if (`getAttr ($eachMesh + ".do.ovs")` == 1)
+			{
+			getMeshShaders( $eachMesh );
+			} 
+		}
+
+	string $shaderGrp;
+	for ($shaderGrp in $smdShaderGrps)
+		{
+		string $thisShader[];
+		$thisShader = `listConnections ($shaderGrp + ".ss")`;
+		string $shader = $thisShader[0];
+
+		fixUpShader( $shader, "color" );
+		fixUpShader( $shader, "normalCamera" );
+
+		string $reflectedColorExists[] = `findAttr -r -st reflectedColor $shader`;
+		if (`size $reflectedColorExists` > 0)
+		{
+			string $envMap;			// the map texture
+			string $envMapNode = `findUpstream {"envSphere", "envCube", "envChrome"} ($shader + ".reflectedColor")`;
+			if (`size $envMapNode` > 0)
+				{
+				$envMap = getRelativeMaterialsrcName( `fileNodeInfo -f $shader reflectedColor` );
+
+				string $type = `nodeType $envMapNode`;
+				if ( $type != "envCube" )
+					{
+					fixUpShader( $shader, "reflectedColor" );
+					}
+				else
+					{
+					if (`tolower $envMap`!= "env_cubemap")
+						{
+						$envMap = `stripEnvMapName $envMap`;
+						string $faces[] = {"top","bottom","left","right","front","back"};
+						string $face;
+						for ($face in $faces)
+							{
+							fixUpShader( $envMapNode, $face );
+							}
+						}
+					}			
+
+				fixUpShader( $shader, "specularColor" );
+				}
+			}
+		}
+	}

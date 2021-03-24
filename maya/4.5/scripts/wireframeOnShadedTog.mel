@@ -1,0 +1,21 @@
+// Xray mode On/Off Toggle (Feb/10/2003)
+//
+// By Hong-Suck Suh
+//    cghub_com@hotmail.com
+//    www.cghub.com
+//
+// Note : Toggle Xray-mode on selected viewport.
+//
+
+
+global proc wireframeOnShadedTog()
+	{
+	string $XRpanel = `getPanel -withFocus`;
+
+	int $XT1 = `modelEditor -q -wos $XRpanel`;
+
+	if ($XT1 == 1)
+		modelEditor -e -wos 0 $XRpanel;
+	else
+		modelEditor -e -wos 1 $XRpanel;
+	}

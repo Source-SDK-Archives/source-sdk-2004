@@ -1,0 +1,120 @@
+// Copyright (C) 1997-2001 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+//-------------------------------------------------------------------------------------------------------------------------------------//
+//-------------------------------------------------------------------------------------------------------------------------------------//
+//	SCRIPT:	jsOrientJointUI.mel
+//	AUTHOR:	Jason Schleifer
+//			oy_vay@hotmail.com
+//	DATE:		July 12, 2001
+//
+//	DESCRIPTION:	This script can be used to change the orientation of selected
+//			joints.  It allows the user to align them so their Y axis is facing
+//			down the joint, and the Z is facing either UP or DOWN.
+//
+//------------------------------------------------------------------------------------------------------------------------------------//	
+//-------------------------------------------------------------------------------------------------------------------------------------//
+
+
+//-------------------------------------------------------------------------------------------------------------------------------------//
+//	PROC:	jsOrientJointUI
+//	
+//		This is the main procedure for jsOrientJointUI. 
+//-------------------------------------------------------------------------------------------------------------------------------------//
+
+global proc jsOrientJointUI ()
+{
+
+	// Create a window which will allow the user to choose between Z-up and Z-down
+	string $win = "jsOrientJointWindow";
+
+	// check and see if the window exists.  if it does, then delete it.
+	if (`window -exists $win`)
+		deleteUI $win;
+
+	// create the window
+	jsCreateOrientJointWindow $win;
+
+	// make the callbacks
+	jsCreateOrientJointWindowCB;
+
+	// show the window
+	showWindow $win;
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------//
+//	PROC:	jsCreateOrientJointWindow
+//
+//		This procedure creates the joint orient window.
+//	
+//	IN:	string $win - the name of the window that's getting created.
+//-------------------------------------------------------------------------------------------------------------------------------------//
+
+proc jsCreateOrientJointWindow ( string $win )
+{
+	// define the window;
+	window 
+		-title "Orient Joint Window"
+		$win;
+
+	// create the row-column layout.  This layout will let us place the buttons next to eachother.
+	$rc = `rowColumnLayout -nc 2`;
+
+		// create the two buttons.
+		button -l "Z Up" jsZUpButton;
+		button -l "Z Down" jsZDownButton;
+
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------//
+//	PROC:	jsCreateOrientJointCB
+//
+//		This procedure the callbacks for the buttons.
+//	
+//-------------------------------------------------------------------------------------------------------------------------------------//
+
+proc jsCreateOrientJointCB ()
+{
+	// define the command first.  The command will take 1 input, either 1 or 0.  1 will mean Z is UP.  0 will mean Z is DOWN
+	string $cmd = "jsOrientJoint “;
+
+	button -e -c ($cmd + “ 1”) jsZUpButton;
+	button -e -c ($cmd + “ 0”) jsZDownButton;
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------//
+//	PROC:	jsOrientJoint
+//
+//		This procedure orients the joints based on the given input: 1 or 0
+//
+//	IN:	int $direction - 1 = up, 0 = down
+//	
+//-------------------------------------------------------------------------------------------------------------------------------------//
+
+global proc jsOrientJoint ( int $direction )
+{
+	// Define Variables
+	string $joints[0];		// these will be all the selected joints
+	
+	// get all the joints which are selected
+	$joints = `ls -sl -type joint`;
+
+	// check and see if there are any joints selected.  If not, error out.
+	if (size($joints) == 0)
+		error (“You have no joints selected.\n”);
+		
+	
+}

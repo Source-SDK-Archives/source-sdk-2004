@@ -1,0 +1,16 @@
+global proc int okToWrite (string $file, int $overwrite)
+{
+// returns 0 if file is unwritable
+// 1 if there is no existing file
+// 2 if the file exists and is writeable
+// the $overwrite param will try to check file out if set
+
+if (! `file -q -exists $file`) return 1;
+if (`filetest -w $file`) return 2;
+if ($overwrite)
+	{
+		warning ("attempting to check out "+ $file);
+		vss $file -o;
+	}
+return (2 * (`filetest -w $file`));
+}

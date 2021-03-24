@@ -1,0 +1,106 @@
+// Copyright (C) 1997-2001 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+//	SCRIPT:	jsRenameWindow.mel
+//	AUTHOR:	Jason Schleifer
+//			oy_vay@hotmail.com
+//	DATE:	July 17, 2001	
+//
+//	DESCRIPTION:	Renames the selected objects with an incremental
+//					post-fix
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+
+global proc jsRenameWindow ()
+{
+	// create the window
+	$win = "jsRenameWindow";
+	if (`window -exists $win`)
+		deleteUI $win;
+
+	jsCreateRenameWindow $win;
+
+	showWindow $win;
+}	
+
+global proc jsCreateRenameWindow (string $win)
+{
+	window -t "jsRename" $win;
+	
+	columnLayout -adj true;
+		textFieldGrp -l "Rename Prefix:" -tx "new name" jsRenameTFG;
+		intFieldGrp -nf 1 -l "Increment Start:" -v1 1 jsRenameIFG;
+
+	rowColumnLayout -nc 2;
+	button -l "Rename" -c ("jsMakeRename");
+	button -l "Cancel" -c ("deleteUI " + $win);
+
+	
+}
+
+global proc jsMakeRename ()
+{
+	// get the selected objects
+	string $objs[0];
+	$objs = `ls -sl`;
+
+	// make sure there are objects selected
+	if (size($objs) == 0)
+		error ("You need to select at least one object.\n");
+
+	// get the new name
+	string $newName;
+	int $inc;
+
+	$newName = `textFieldGrp -q -tx jsRenameTFG`;
+	$inc = `intFieldGrp -q -v1 jsRenameIFG`;
+
+	// now we'll have to increment through all the objects and rename them.
+	// However, because some of the objects may be children of the ones we're
+	// already renaming, and their parents will get renamed.. there's no REAL
+	// way we can keep track of what the objects names are.  So, what we're
+	// going to do instead is make a temporary node with links to each of the
+	// objects.  Then we'll simply check the links and rename based on that..
+	// once all the renaming is done, we'll remove the temporary object.
+
+	$grp = `createNode transform`;
+
+	// add the temporary attribute
+	addAttr -ln "newName" -at message -multi -im false $grp;
+	
+	// for each object, connect to the next available newName attribute
+	for ($ob in $objs)
+	{
+		connectAttr -na ($ob + ".message") ($grp + ".newName");	
+	}
+	
+	string $selObjs[0];
+	// now that we have all the connections, increment through them
+	for ($x = 0; $x < size($objs); $x++)
+	{
+		string $con[0];
+		$con = `listConnections ($grp + ".newName["+$x+"]")`;
+
+		$new = `rename ($con[0]) ($newName + "_" + $inc)`;
+		$selObjs[$x] = $new;
+		$inc++;
+	}
+	delete $grp;
+	select $selObjs;
+}

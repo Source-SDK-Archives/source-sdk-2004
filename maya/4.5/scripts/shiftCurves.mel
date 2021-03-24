@@ -1,0 +1,34 @@
+// move a selected animation curve by user input amount
+// shiftCurves -time changes timing
+// shiftCurves -value changes value
+
+global proc int shiftCurves (string $mode)
+{
+$mode = `tolower $mode`;
+if ($mode == "t" || $mode == "-t" || $mode == "-time") $mode = "time";
+if ($mode == "v" || $mode == "-v" || $mode == "-value") $mode = "value";
+
+print $mode;
+string $dlg = `promptDialog 
+	-title "shift Animation" 
+	-message "enter shift value:"
+	-button "OK"
+	-button "Cancel"
+	-defaultButton "OK"
+	-cancelButton "Cancel"`;
+if ($dlg == "OK")
+	{
+	float $shift = `promptDialog -q -t`;
+	if ($shift != 0)
+		{
+		switch ($mode)
+			{
+			case "value": keyframe -edit -animation keys -r -vc $shift; break;
+			case "time": keyframe -edit -animation keysOrObjects -r -tc $shift; break;
+			default: warning  ("could not understand keyword "+ $mode);
+			}
+		return 1;
+		}	
+	}
+return 0;
+}

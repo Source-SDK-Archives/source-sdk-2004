@@ -1,0 +1,31 @@
+global proc string[]  dumpVmt ()
+{
+string $shaders[] = `ls -sl -type phongE`;
+if (`size $shaders` == 0) $shaders = `ls -type phongE`;
+int $list = `size $shaders`;
+string $shader;
+
+progressWindow
+		-progress 0
+		-minValue 0
+		-maxValue $list
+		-title ("Vmt Export")
+		-status ($shaders[0])
+		-isInterruptable false;
+
+waitCursor -st 1;
+int $counter = 0;
+for ($shader in $shaders)
+	{
+	vmt $shader;
+	progressWindow
+		-edit
+		-progress $counter
+		-status ($shader);
+	$counter ++;
+	
+	}
+waitCursor -st 0;
+progressWindow -ep;
+return $shaders;
+}

@@ -1,0 +1,5 @@
+"LightmappedGeneric"
+{
+	"$basetexture" "sdk/bump"
+	"$bumpmap" "sdk/bump_normal"
+}

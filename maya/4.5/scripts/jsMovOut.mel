@@ -1,0 +1,149 @@
+// Copyright (C) 1997-2001 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+//	SCRIPT:	jsMovOut.mel
+//	AUTHOR:	Jason Schleifer
+//			oy_vay@hotmail.com
+//	DATE:	July 21, 2001	
+//
+//	DESCRIPTION:	This script looks at defined creatures in the scene
+//					and writes out the mov information for them.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+
+global proc jsCreateMovOutWin (string $win)
+{
+	window -title "jsMovOutWin" $win;
+
+	$f = `formLayout -nd 100`;
+		text -l "Creatures in Scene" jsMovOutCreaturesT;
+		textScrollList -nr 10 -ams 1 jsMovOutCreaturesListTSL;
+		button -l "Export MOV" jsMovOutGoB;
+		button -l "Cancel" -enable 1 -c ("deleteUI "+$win) jsMovOutCancelB;
+		
+
+	formLayout -e
+		-af jsMovOutCreaturesT top 5	
+		-af jsMovOutCreaturesT left 5	
+		-af jsMovOutCreaturesT right 5
+
+		-af jsMovOutGoB left 5
+		-af jsMovOutGoB bottom 5
+		-ap jsMovOutGoB right 0 50
+		
+		-ap jsMovOutCancelB left 0 50
+		-af jsMovOutCancelB right 5
+		-af jsMovOutCancelB bottom 5 
+	
+
+		-ac jsMovOutCreaturesListTSL top 5 jsMovOutCreaturesT
+		-af jsMovOutCreaturesListTSL left 5
+		-ac jsMovOutCreaturesListTSL bottom 5 jsMovOutGoB
+		-af jsMovOutCreaturesListTSL right 5
+
+
+		$f;
+}
+
+global proc jsMovOutCB ()
+{
+	// define the callbacks for the window
+	button -e
+		-c "jsGrabMovOutFile"
+			jsMovOutGoB;
+
+	
+}
+global proc jsGrabMovOutFile ()
+{
+    fileBrowserDialog -m 1 -fc "jsGenerateExportMovCommand" -ft "mov" -an "Mov_Out" -om "SaveAs";
+}
+global proc jsGenerateExportMovCommand ( string $fileName, string $fileType)
+{
+	// find out which creatures are selected.. as these are the ones that are
+	// going to be written out.
+	string $selected[0];
+	$selected = `textScrollList -q -si jsMovOutCreaturesListTSL`;
+
+	if (size($selected) == 0)
+	{
+		error ("You haven't selected any creatures.\n");
+	}
+
+	string $fileBase = $fileName;
+	// get the min and max time range
+	$min = `playbackOptions -q -min`;
+	$max = `playbackOptions -q -max`;
+	for ($creature in $selected)
+	{
+		// find the connected objects
+		string $connected[0];
+		string $shapes[0];
+		$shapes = `listRelatives -f -s $creature`;
+
+		$connected = `listConnections -p true -s true ($shapes[0] + ".jsConnectedObjs")`;
+		if (size($connected) == 0)
+			error ("You don't have anything connected to " + $creature + " to export.\n");
+		$newFileName  = ($fileBase + "_"+$creature+".mov");
+
+
+		// now generate the command
+
+		$cmd = ("movOut -f \"" + $newFileName + "\" -t \"" + $min + ":" + $max + "\" ");
+
+		for ($con in $connected)
+		{
+			$cmd += ($con + " ");	
+		}
+		evalEcho $cmd;
+	}
+}
+
+global proc jsUpdateMovOutWin ()
+{
+	// get the list of creatures in the scene
+	string $creatures[0];
+	$creatures = `jsListCreatures`;
+	
+	// $creatures = all the shapes of the creatures. For each one,
+	// go through and add the parent name to the jsDefineCreatureListTSL
+	
+	for ($cre in $creatures)
+	{
+		$parent = `listRelatives -p $cre`;
+		textScrollList -e -a $parent[0] jsMovOutCreaturesListTSL;
+	}
+
+}
+global proc jsMovOut ()
+{
+
+	$win = "jsMovOutWin";
+
+	if (`window -exists $win`)	
+		deleteUI $win;
+
+	jsCreateMovOutWin ($win);
+	jsMovOutCB;
+
+	showWindow $win;
+
+	// now update the window to show all the creatures in the scene
+	jsUpdateMovOutWin;
+}

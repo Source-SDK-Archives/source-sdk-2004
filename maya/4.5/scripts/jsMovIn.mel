@@ -1,0 +1,172 @@
+// Copyright (C) 1997-2001 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+//	SCRIPT:	jsMovin.mel
+//	AUTHOR:	Jason Schleifer
+//			oy_vay@hotmail.com
+//	DATE:	July 21, 2001	
+//
+//	DESCRIPTION:	This script looks at defined creatures in the scene
+//					and writes in the mov information for them.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+
+global proc jsCreateMovinWin (string $win)
+{
+	window -title "jsMovinWin" $win;
+
+	$f = `formLayout -nd 100`;
+		text -l "Creatures in Scene" jsMovinCreaturesT;
+		textScrollList -nr 10 -ams 0 jsMovinCreaturesListTSL;
+		button -l "Import MOV" jsMovinGoB;
+		button -l "Cancel" -enable 1 -c ("deleteUI "+$win) jsMovinCancelB;
+		
+
+	formLayout -e
+		-af jsMovinCreaturesT top 5	
+		-af jsMovinCreaturesT left 5	
+		-af jsMovinCreaturesT right 5
+
+		-af jsMovinGoB left 5
+		-af jsMovinGoB bottom 5
+		-ap jsMovinGoB right 0 50
+		
+		-ap jsMovinCancelB left 0 50
+		-af jsMovinCancelB right 5
+		-af jsMovinCancelB bottom 5 
+	
+		-ac jsMovinCreaturesListTSL top 5 jsMovinCreaturesT
+		-af jsMovinCreaturesListTSL left 5
+		-ac jsMovinCreaturesListTSL bottom 5 jsMovinCancelB
+		-af jsMovinCreaturesListTSL right 5
+
+		$f;
+}
+
+global proc jsMovinCB ()
+{
+	// define the callbacks for the window
+	button -e
+		-c "jsGrabMovFile"
+			jsMovinGoB;
+
+	
+}
+global proc jsGrabMovFile ()
+{
+    fileBrowserDialog -m 0 -fc "jsGenerateImportMovCommand" -ft "mov" -an "Mov_In" -om "Import";
+
+}
+global proc jsGenerateImportMovCommand ( string $fileName, string $fileType)
+{
+
+	// find in which creatures are selected.. as these are the ones that are
+	// going to be written in.
+	string $selected[0];
+	$selected = `textScrollList -q -si jsMovinCreaturesListTSL`;
+
+	if (size($selected) == 0)
+	{
+		error ("You haven't selected any creatures.\n");
+	}
+
+	for ($creature in $selected)
+	{
+		// find the connected objects
+		string $connected[0];
+		string $shapes[0];
+		$shapes = `listRelatives -f -s $creature`;
+
+		$connected = `listConnections -p true -s true ($shapes[0] + ".jsConnectedObjs")`;
+		if (size($connected) == 0)
+			error ("You don't have anything connected to " + $creature + " to import.\n");
+
+		// break the connections to $connected
+		for ($con in $connected)
+		{
+			// find out if something's connected
+			$c = `listConnections -p true -s true -d false $con`;
+			if (size($c) > 0)
+			{
+				disconnectAttr $c[0] $con;
+			}
+		}
+		// get the start time
+		$start = `playbackOptions -q -min`;
+
+		// now generate the command
+
+		$cmd = ("movIn -f \"" + $fileName + "\" -st \"" + $start + "\" ");
+
+		for ($con in $connected)
+		{
+			$cmd += ($con + " ");	
+		}
+		// before we import, we have to switch the rotation interpolations to 1
+		$interp = `optionVar -query rotationInterpolationDefault`;
+		optionVar -iv rotationInterpolationDefault 1;
+
+		evalEcho $cmd;
+		
+		optionVar -iv rotationInterpolationDefault $interp;
+	}
+}
+
+global proc jsReplaceMovinFile (string $file, string $fileType)
+{
+	textFieldButtonGrp -e -tx ($file) jsMovinCreaturesTFBG;
+}
+global proc jsMovinFile (string $TFBG)
+{
+	// first find in what the current directory/file is for the TFBG
+    fileBrowserDialog -m 1 -fc "jsReplaceMovinFile" -ft "mov" -an "Mov_in" -om "SaveAs";
+
+}
+global proc jsUpdateMovinWin ()
+{
+	// get the list of creatures in the scene
+	string $creatures[0];
+	$creatures = `jsListCreatures`;
+	
+	// $creatures = all the shapes of the creatures. For each one,
+	// go through and add the parent name to the jsDefineCreatureListTSL
+	
+	for ($cre in $creatures)
+	{
+		$parent = `listRelatives -p $cre`;
+		textScrollList -e -a $parent[0] jsMovinCreaturesListTSL;
+	}
+
+}
+global proc jsMovIn ()
+{
+
+	$win = "jsMovinWin";
+
+	if (`window -exists $win`)	
+		deleteUI $win;
+
+	jsCreateMovinWin ($win);
+	jsMovinCB;
+
+	showWindow $win;
+
+	// now update the window to show all the creatures in the scene
+	jsUpdateMovinWin;
+}

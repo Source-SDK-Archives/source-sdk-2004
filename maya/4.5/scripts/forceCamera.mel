@@ -1,0 +1,42 @@
+
+
+global proc forceCamera (string $view, int $fit)
+	{
+	string $curPanel = `getPanel -up`;
+	if (`size $curPanel` == 0)
+		{
+			$curPanel = `getPanel -withFocus`;
+		}
+	string $cam = `modelPanel -q -cam $curPanel`;
+	print $cam;
+	setFocus $curPanel;
+	switch ($view) {
+		
+		case "front":
+			
+			viewSet -f;
+			break;
+		case "back":
+			viewSet -b;
+			break;
+		case "left":
+			viewSet -ls;
+			break;
+		case "right":
+			viewSet -rs;
+			break;
+		case "top":
+			viewSet -t;
+			break;
+		case "bottom":
+			viewSet -bo;
+			break;
+		case "persp":
+			viewSet -p;
+			break;
+		default:
+			viewSet -f;
+		}
+	if ($fit == true) viewFit;
+	setFocus $curPanel;
+	}

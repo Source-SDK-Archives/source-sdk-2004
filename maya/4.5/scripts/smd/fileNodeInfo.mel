@@ -1,0 +1,93 @@
+global proc string findUpstream (string $find[], string $node)
+	{
+	// looks upstream from $node (a node or attrib)
+	// and returns the first node of the type specified in $find array
+
+	int $mode;
+	$mode = (`gmatch $node "*.*"`);
+	string $types;
+	string $findNodes;
+	string $x;
+
+	string $upStream[];
+	for ($x in $find)
+		{
+		$upStream = `eval ("listConnections -d 0 -type " + $x + " " + $node)`;
+		if (`size $upStream` > 0 )
+			{
+			return $upStream[0];
+			}
+		}
+
+	string $further[] = `listConnections -d 0 $node`;
+	for ($x in $further)
+		{
+		string $child;
+		$child = `findUpstream $find $x`;
+		if (`size $child` > 0 )return $child;
+		}
+	return "";
+	}
+
+
+global proc float[] getTint (string $item, string $attrib)
+	{	
+	$node = $item + "." + $attrib;
+	string $upstream[];
+	$upstream = `listConnections -s 1 - d 0 -type multiplyDivide $node`;
+
+	string $each;
+	for ($each in $upstream)
+		{	
+		if (`connectionInfo -id ($each + ".input1X")`) return `getAttr ($each + ".input2")`;
+		return `getAttr ($each + ".input1")`;
+		}
+	return `getAttr $node`;
+	}
+
+
+global proc string fileNodeInfo (string $get, string $item, string $attrib)
+	{ 
+	// takes a node or connection and looks upstream
+	// until it finds a file node. Returns the name
+	// of the file node.
+	// -n returns node, -f returns file name, -c returns connection type 
+
+	$get = `tolower $get`;
+	$mode = ($attrib != ""); // this makes sure we hide plugs if $node is a node.
+	string $node = ($item + "." + $attrib);
+	if (! $mode) $node = $item;
+
+	$upstream = `listConnections -d 0 -type file $node`;
+	string $item;
+
+	if (`size $upstream` > 0)
+		{
+		string $plugs[] = `listConnections -p $mode -d 1 -c 1 -s 0  $upstream[0]`;
+		int $ctr;
+		for ($ctr = 0; $ctr < `size $plugs`; $ctr += 1)
+			{
+			if ($plugs[$ctr] == $node) 
+				{
+				string $srcNode[];
+				tokenize  $plugs[($ctr - 1)] "." $srcNode;
+				if ($get == "-n") return $srcNode[0];
+				if ($get == "-c") return $srcNode[1];
+				if ($get == "-f" )
+					{
+					string $file = `getAttr ($srcNode[0] + ".ftn")`;
+					return `tolower $file`;
+					}
+				}
+			}
+		}
+
+	string $allUpstream[] = (`listConnections -d 0 $node`);
+	for ($item in $allUpstream)
+		{
+		string $kid;
+		$kid = `fileNodeInfo $get $item ""`;
+		if (`size $kid` > 0) return $kid;
+		}
+	return "";
+	}

@@ -1,0 +1,132 @@
+// --------------------------
+// MP5
+// --------------------------
+
+"Weapon_MP5Navy.Single"
+{
+	"channel"		"CHAN_WEAPON"
+	"volume"		"1.0"
+	
+	"CompatibilityAttenuation"	"0.64"
+	"pitch"		"PITCH_NORM"
+
+	"wave"			")weapons/mp5navy/mp5-1.wav"
+	
+}
+
+"Weapon_MP5Navy.Clipout"
+{
+	"channel"		"CHAN_ITEM"
+	"volume"		"1.0"
+	"CompatibilityAttenuation"	"1.0"
+	"pitch"		"PITCH_NORM"
+
+	"wave"			"weapons/mp5navy/mp5_clipout.wav" 
+}
+
+"Weapon_MP5Navy.Clipin"
+{
+	"channel"		"CHAN_ITEM"
+	"volume"		"1.0"
+	"CompatibilityAttenuation"	"1.0"
+	"pitch"		"PITCH_NORM"
+
+	"wave"			"weapons/mp5navy/mp5_clipin.wav" 
+}
+
+"Weapon_MP5Navy.Slideback"
+{
+	"channel"		"CHAN_ITEM"
+	"volume"		"1.0"
+	"CompatibilityAttenuation"	"1.0"
+	"pitch"		"PITCH_NORM"
+
+	"wave"			"weapons/mp5navy/mp5_slideback.wav" 
+}
+
+// --------------------------
+// Grenade
+// --------------------------
+
+"Default.PullPin_Grenade"
+{
+	"channel"		"CHAN_WEAPON"
+	"volume"		"1.0"
+	"CompatibilityAttenuation"	"1.0"
+	"pitch"			"PITCH_NORM"
+
+	"wave"			"weapons/pinpull.wav"
+}
+
+"Grenade.Bounce"
+{
+	"channel"		"CHAN_VOICE"
+	"volume"		"1.0"
+	"CompatibilityAttenuation"	"1.0"
+	"pitch"			"PITCH_NORM"
+
+	"wave"			"weapons/hegrenade/he_bounce-1.wav"
+}
+
+"BaseGrenade.Explode"
+{
+	"channel"		"CHAN_WEAPON"
+	"volume"		"1"
+	"soundlevel"  	"SNDLVL_100dB"
+	"pitch"		"80,120"
+
+	"rndwave"
+	{
+		"wave"	"^weapons/hegrenade/explode3.wav"
+		"wave"	"^weapons/hegrenade/explode4.wav"
+		"wave"	"^weapons/hegrenade/explode5.wav"
+	}
+}
+
+"BaseExplosionEffect.Sound"
+{
+	"channel"	"CHAN_STATIC"
+	"volume"	"1.0"
+	"soundlevel"	"SNDLVL_85dB"
+	"pitch"		"80,110"
+
+	"rndwave"
+	{
+		"wave"	"weapons/debris1.wav"
+		"wave"	"weapons/debris2.wav"
+	}
+}
+
+// --------------------------
+// M3SUPER90
+// --------------------------
+
+"Weapon_M3.Single"
+{
+	"channel"		"CHAN_WEAPON"
+	"volume"		"1.0"
+	"CompatibilityAttenuation"	"0.48"
+	"pitch"		"PITCH_NORM"
+
+	"wave"			")weapons/m3/m3-1.wav"
+}
+
+"Weapon_M3.Insertshell"
+{
+	"channel"		"CHAN_ITEM"
+	"volume"		"1.0"
+	"CompatibilityAttenuation"	"1.0"
+	"pitch"		"PITCH_NORM"
+
+	"wave"			"weapons/m3/m3_insertshell.wav"
+}
+
+"Weapon_M3.Pump"
+{
+	"channel"		"CHAN_ITEM"
+	"volume"		"1.0"
+	"CompatibilityAttenuation"	"1.0"
+	"pitch"		"PITCH_NORM"
+
+	"wave"			"weapons/m3/m3_pump.wav"
+}

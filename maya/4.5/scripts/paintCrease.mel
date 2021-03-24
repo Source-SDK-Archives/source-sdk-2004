@@ -1,0 +1,18 @@
+global proc paintCrease()
+{
+if (! `contextInfo -q -ex paintCreaseTool`)
+	{
+	artSelectCtx 
+		- n "paintCreaseTool"
+		- i1 "paintCrease.bmp"
+		- ch 1
+		- paintmode "screen"
+		- projective 1
+		- outline 1
+		- outwhilepaint 1
+		- ads 0
+		- bsc "SelectEdgeMask"
+		- asc "polySoftEdge -ch 1 -a 0";
+	}
+setToolTo paintCreaseTool;
+}

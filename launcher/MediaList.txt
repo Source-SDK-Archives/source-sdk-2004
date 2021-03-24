@@ -1,0 +1,136 @@
+Media
+{
+	Images
+	{
+		"1"
+		{
+			index	1
+			image	icon_hl2_media	// goes in vgui/notes.tga
+		}
+		"2"
+		{
+			index	2
+			image	icon_document
+		}
+		"3"
+		{
+			index	3
+			image	icon_soft
+		}
+		"4"
+		{
+			index	4
+			image	icon_hammer
+		}
+		"5"
+		{
+			index	5
+			image	icon_faceposer
+		}
+		"6"
+		{
+			index	6
+			image	icon_hlmv
+		}
+		"7"
+		{
+			index	7
+			image	icon_scenemanager
+		}
+		"8"
+		{
+			index	8
+			image	icon_weblink
+		}
+	}
+
+	Sections
+	{
+		"1"
+		{
+			id		1
+			Name	DOCUMENTATION
+			
+			prerelease_notes
+			{
+				Text			"Release Notes"
+				ShellExecute	"http://www.valve-erc.com/srcsdk/prerelease_notes.html"
+				Image			2
+			}
+			docs
+			{
+				Text			"SDK Reference Docs"
+				ShellExecute	"http://www.valve-erc.com/srcsdk/"
+				Image			2
+			}
+		}
+
+		"2"
+		{
+			id		2
+			Name	APPLICATIONS
+
+			newmod
+			{
+				Text			"Create a Mod"
+				Image			4
+
+				InlineProgram	CreateMod
+				
+				ConfigData
+				{
+				}
+			}			
+			hammer
+			{
+				Text			Hammer
+				Program			"%basedir%\\bin\\hammer.exe -game \"%gamedir%\""
+				Image			4
+			}
+			hlmv
+			{
+				Text			"Model Viewer"
+				Program			"\"%basedir%\\bin\\hlmv.exe\" -game \"%gamedir%\""
+				Image			6
+			}
+// these aren't supported in the initial tools release
+//			faceposer
+//			{
+//				Text			"Face Poser"
+//				Program			"\"%basedir%\\bin\\hlfaceposer.exe\" -game \"%basedir%\\SourceSDK\""
+//				Image			5
+//			}
+//			scenemanager
+//			{
+//				Text			"Scene Manager"
+//				Program			"\"%basedir%\\bin\\scenemanager.exe\" -game \"%basedir%\\SourceSDK\""
+//				Image			7
+//			}
+		}
+		
+		"3"
+		{
+			id		3
+			Name LINKS
+
+			online
+			{
+				Text			"Online Resources - VERC"
+				ShellExecute	"http://collective.valve-erc.com/"
+				Image			8
+			}
+			discussion
+			{
+				Text			"Online Discussion"
+				ShellExecute	"http://www.chatbear.com/board.plm?b=390&v=flatold&g=21"
+				Image			8
+			}
+			soft
+			{
+				Text			"SoftImage|XSI EXP"
+				ShellExecute	"http://www.softimage.com/Products/EXP/HL2/"
+				Image			8
+			}
+		}
+	}
+}

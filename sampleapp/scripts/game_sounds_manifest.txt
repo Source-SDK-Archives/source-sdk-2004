@@ -1,0 +1,10 @@
+game_sounds_manifest
+{
+	"precache_file"  	"scripts/game_sounds_player.txt"
+
+	"preload_file"		"scripts/game_sounds_weapons.txt"
+	"preload_file"		"scripts/game_sounds_vehicles.txt"
+}
+
+
+

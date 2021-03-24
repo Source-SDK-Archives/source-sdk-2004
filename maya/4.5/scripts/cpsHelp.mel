@@ -1,0 +1,77 @@
+/* cpsHelp.mel
+
+This script may be freely distributed. Modify at your own risk.
+
+Author: Dirk Bialluch (DirkBi@Software2000.de)
+
+Creation date:	19.09.2000
+Last update:	21.06.2001
+
+*/
+
+//
+// Create UI
+//
+
+global proc cpsHelp ()
+{
+	int $uiWidth = 250;
+
+	if ( `window -exists cpsh_ui` )
+		deleteUI cpsh_ui;
+
+	window
+		-maximizeButton false
+		-resizeToFitChildren false
+		-title "About Connect Poly Shape"
+		-wh 290 238
+		-iconName "About Connect Poly Shape" cpsh_ui;
+
+		string $cps1_form = `formLayout -numberOfDivisions 100`;
+    			string $cps1_scroll = `scrollLayout -hst 16 -vst 16 -childResizable true -minChildWidth $uiWidth`;
+				columnLayout -adjustableColumn true -rowSpacing 6;
+					rowLayout
+						-numberOfColumns 1
+						-cat 1 "left" 5;
+						text cps1_instructions;
+						setParent ..;
+					setParent ..;
+				setParent ..;
+
+			string $cps1_button = `button
+				-label "Close"
+				-command "deleteUI cpsh_ui"`;
+
+	// set form layouts
+	formLayout -edit
+		-attachForm $cps1_scroll "top" 4
+		-attachForm $cps1_scroll "left" 4
+		-attachControl $cps1_scroll "bottom" 4 $cps1_button
+		-attachForm $cps1_scroll "right" 4
+
+		-attachNone $cps1_button "top"
+		-attachForm $cps1_button "left" 4
+		-attachForm $cps1_button "bottom" 4
+		-attachForm $cps1_button "right" 4
+		$cps1_form;
+
+	string $cps1_instructions =
+		"Connect Poly Shape V3.0\n" +
+		"\n" +
+		"Programmed by Dirk Bialluch, 1999-2001\n" +
+		"\n" +
+		"This script may be freely distributed.\n" +
+		"Modify at your own risk.\n" +
+		"\n" +
+		"For a detailed tool description please refer to\n" +
+		"the HTML documentation.\n" +
+		"\n" +
+		"Email: 'DirkBi@Software2000.de'\n" +
+		"Homepage: 'http://dirk-bialluch.mayaring.com'";
+
+	text -e -label $cps1_instructions cps1_instructions;
+
+	showWindow cpsh_ui;
+}
+
+// end of script

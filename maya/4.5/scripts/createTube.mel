@@ -1,0 +1,744 @@
+/* createTube.mel V1.4
+
+This script may be freely distributed. Modify at your own risk.
+
+Author: Dirk Bialluch (DirkBi@Software2000.de)
+
+Creation date:	29.12.1998
+Last update:	19.10.2000
+
+Description:
+	This script turns any selected nurbs curve into a nurbs tube surface.
+	Depending on open or periodic curves the extrude settings will be adjusted automatically.
+	If you keep the construction history you can adjust the radius (circle) and extrude
+	attributes later.
+
+Note:
+	Always keep the "path max range" value greater than "path min range", otherwise the caps
+	will not work properly.
+
+TIPS:
+	If the resulting tube appears flat in some areas you must increase the number of spans on
+	the path curve. You can achieve the best results by rebuilding the path uniformly.
+
+History:
+	V1.1
+		NEW
+			-store UI settings
+			-support nurbs curves on surfaces
+			-added path min/max range
+			-cap both tube ends with trimmed planar surface
+	V1.2
+		FIXED
+			-caps now work correctly if path curves have been detached
+			-caps are no longer double transformed by the group node
+		ENHANCED
+			-put profile curve into group
+		NEW
+			-set profile curve degree
+			-set profile curve spans
+			-set profile rotation value
+	V1.3
+		CHANGED
+			-script renamed from crv2tube to createTube
+		ENHANCED
+			-completely new UI layout
+		NEW
+			-reset tool
+			-help window
+
+	V1.31
+		CHANGED
+			-min tube radius limit removed
+		FIXED
+			-profile degree UI value will now be stored
+			-frame layout can now be collapsed
+		NEW
+			-rebuild path curve
+	V1.32
+		CHANGED
+			-history handling improved
+		FIXED
+			-problem with duplicated tube names fixed
+	V1.4
+		FIXED
+			-all construction objects will now be deleted if history is disabled
+			-rebuild curve will no longer produce an extra curve, if history is enabled
+			-all construction curves will now be parented under the construction group
+		NEW
+			-tool will now operate on isoparms
+*/
+
+//
+// Create UI
+//
+
+global proc createTube ()
+{
+	int $uiLabelWidth = 150;
+	int $uiInputWidth = 130;
+	int $uiWidth = $uiLabelWidth + $uiInputWidth + 110;
+
+	if ( `window -exists ct_ui` == true )
+		deleteUI ct_ui;
+
+	window
+		-maximizeButton false
+		-resizeToFitChildren false
+		-menuBar true
+		-menuBarVisible true
+		-title "Create Tube V1.4"
+		-iconName "Curve to Tube" ct_ui;
+
+	menu
+		-label "Edit"
+		-tearOff false;
+	menuItem
+    		-label "Reset Settings"
+    		-c "ct_storeRecallUI reset; createTube";
+	menu
+		-label "Help"
+		-tearOff false;
+	menuItem
+    		-label "Help with Create Tube tool"
+    		-c "ct_help 1";
+	menuItem
+		-divider true;
+	menuItem
+    		-label "Script Information"
+    		-c "ct_help 2";
+ 
+	string $ct_form = `formLayout -numberOfDivisions 100`;
+		string $ct_scroll = `scrollLayout -hst 16 -vst 16 -childResizable true -minChildWidth $uiWidth`;
+			columnLayout -adjustableColumn true -rowSpacing 6;
+				frameLayout
+					-label "Tube Settings"
+					-labelAlign "center"
+					-cll true
+					-lw $uiWidth
+					-mh 3
+					-cc "ct_adjustUI 0"
+					-ec "ct_adjustUI 0"
+					-bs "etchedIn"
+					-bv true
+					ct_cFrame;
+					columnLayout -adjustableColumn true;
+						rowLayout
+							-numberOfColumns 2
+							-cat 1 "right" 5
+							-columnWidth 1 $uiLabelWidth
+							-columnWidth 2 $uiInputWidth;
+							text -l "Tube Radius";
+							floatField
+								-w 80
+								-precision 3
+								-value .2
+								-minValue 0
+								-cc "ct_storeRecallUI store"
+								ct_radius;
+							setParent ..;
+
+						separator -h 5;
+
+						rowLayout
+							-numberOfColumns 2
+							-cat 1 "right" 5
+							-columnWidth 1 $uiLabelWidth
+							-columnWidth 2 $uiInputWidth;
+							text -l "Path Min Range";
+							floatSliderGrp
+								-field true
+								-precision 3
+								-sliderStep .1
+								-value 0
+								-minValue 0
+								-maxValue 1
+								-cc "ct_adjustUI 1"
+								ct_minRange;
+							setParent ..;
+
+						rowLayout
+							-numberOfColumns 2
+							-cat 1 "right" 5
+							-columnWidth 1 $uiLabelWidth
+							-columnWidth 2 $uiInputWidth;
+							text -l "Path Max Range";
+							floatSliderGrp
+								-field true
+								-precision 3
+								-sliderStep .1
+								-value 1
+								-minValue 0
+								-maxValue 1
+								-cc "ct_adjustUI 2"
+								ct_maxRange;
+							setParent ..;
+
+						separator -h 5;
+
+						rowLayout
+							-numberOfColumns 2
+							-cat 1 "right" 5
+							-columnWidth 1 $uiLabelWidth
+							-columnWidth 2 $uiInputWidth;
+							text -l "Profile Rotation";
+							floatSliderGrp
+								-field true
+								-precision 3
+								-sliderStep .1
+								-value 0
+								-minValue 0
+								-maxValue 360
+								-cc "ct_storeRecallUI store"
+								ct_rotate;
+							setParent ..;
+
+						rowLayout
+							-numberOfColumns 2
+							-cat 1 "right" 5
+							-columnWidth 1 $uiLabelWidth
+							-columnWidth 2 $uiInputWidth;
+							text -l "Profile Spans";
+							intSliderGrp
+								-field true
+								-sliderStep 1
+								-value 8
+								-minValue 3
+								-maxValue 64
+								-cc "ct_storeRecallUI store"
+								ct_spans;
+							setParent ..;
+
+						rowLayout
+							-numberOfColumns 2
+							-cat 1 "right" 5
+							-columnWidth 1 $uiLabelWidth
+							-columnWidth 2 $uiInputWidth;
+							text -l "Profile Degree";
+				 			radioButtonGrp
+								-h 20
+				    				-numberOfRadioButtons 2
+								-cw 1 80
+				 				-labelArray2 "Linear" "Cubic"
+								-select 2
+								-cc "ct_storeRecallUI store"
+								ct_degree;
+							setParent ..;
+
+						separator -h 5;
+
+						rowLayout
+							-numberOfColumns 2
+							-cat 1 "right" 5
+							-columnWidth 1 $uiLabelWidth
+							-columnWidth 2 $uiInputWidth;
+							text -l "Rebuild Curve";
+							checkBox
+								-h 20
+								-label ""
+								-value false
+								-cc "ct_adjustUI 0"
+								ct_rebuildCurve;
+							setParent ..;
+
+						rowLayout
+							-numberOfColumns 2
+							-cat 1 "right" 5
+							-columnWidth 1 $uiLabelWidth
+							-columnWidth 2 $uiInputWidth;
+							text -l "Rebuild Curve Spans";
+							intSliderGrp
+								-field true
+								-sliderStep 1
+								-value 16
+								-fieldMinValue 3
+								-fieldMaxValue 1000
+								-minValue 3
+								-maxValue 100
+								-cc "ct_storeRecallUI store"
+								ct_rebuildSpans;
+							setParent ..;
+
+						separator -h 5;
+
+						rowLayout
+							-numberOfColumns 2
+							-cat 1 "right" 5
+							-columnWidth 1 $uiLabelWidth
+							-columnWidth 2 $uiInputWidth;
+							text -l "Cap Tube Ends";
+							checkBox
+								-h 20
+								-label ""
+								-value false
+								-cc "ct_adjustUI 0"
+								ct_cap;
+							setParent ..;
+
+						rowLayout
+							-numberOfColumns 2
+							-cat 1 "right" 5
+							-columnWidth 1 $uiLabelWidth
+							-columnWidth 2 $uiInputWidth;
+							text -l "Group Geometry";
+							checkBox
+								-h 20
+								-label ""
+								-value 1
+								-enable false
+								-cc "ct_storeRecallUI store"
+								ct_group;
+							setParent ..;
+
+						separator -h 5;
+
+						rowLayout
+							-numberOfColumns 2
+							-cat 1 "right" 5
+							-columnWidth 1 $uiLabelWidth
+							-columnWidth 2 $uiInputWidth;
+							text -l "Keep Construction History";
+							checkBox
+								-h 20
+								-label ""
+								-value 1
+								-cc "ct_storeRecallUI store"
+								ct_history;
+							setParent ..;
+
+						setParent ..;
+					setParent ..;
+				setParent ..;
+			setParent ..;
+		string $ct_button = `button
+				-label "Create Tube"
+				-command "ct_main"
+				sp_button`;
+		string $ct_close = `button
+				-label "Close"
+				-command "deleteUI ct_ui"`;
+
+	// set form layouts
+	formLayout -edit
+		-attachForm $ct_scroll "top" 2
+		-attachForm $ct_scroll "left" 2
+		-attachControl $ct_scroll "bottom" 2 $ct_button
+		-attachForm $ct_scroll "right" 2
+
+		-attachNone $ct_button "top"
+		-attachForm $ct_button "left" 2
+		-attachForm $ct_button "bottom" 2
+		-attachPosition $ct_button "right" 2 50
+
+		-attachNone $ct_close "top"
+		-attachPosition $ct_close "left" 2 50
+		-attachForm $ct_close "bottom" 2
+		-attachForm $ct_close "right" 2
+
+		$ct_form;
+
+	ct_storeRecallUI recall;
+
+	// check UI settings after restoring values
+	ct_adjustUI 0;
+
+	// create spiral script exit scriptJob (delete help window)
+	scriptJob
+		-parent ct_ui
+		-uiDeleted ct_ui ct_exit;
+
+	showWindow ct_ui;
+}
+
+
+//
+// quit script
+//
+
+global proc ct_exit ()
+{
+	if ( `window -exists ct_help` )
+		deleteUI ct_help;
+}
+
+
+//
+// Adjust UI
+//
+
+global proc ct_adjustUI ( int $function )
+{
+	float $min = `floatSliderGrp -q -value ct_minRange`;
+	float $max = `floatSliderGrp -q -value ct_maxRange`;
+
+	switch ( $function )
+	{
+		case 1:
+			if ($min > $max)
+				$min = $max;
+			break;
+		case 2:
+			if ($max < $min)
+				$max = $min;
+			break;
+	}
+
+	if (`checkBox -q -value ct_cap`)
+		checkBox -e -enable true ct_group;
+	else
+		checkBox -e -enable false ct_group;
+
+	floatSliderGrp -e -value $min ct_minRange;
+	floatSliderGrp -e -value $max ct_maxRange;
+	
+	ct_storeRecallUI store;
+}
+
+
+//
+// store/recall UI
+//
+
+global proc ct_storeRecallUI ( string $mode )
+{
+	string $floatFieldList[] = {
+		"ct_radius"
+		};
+
+	string $intFieldList[] = {
+		};
+
+	string $floatSliderGrpList[] = {
+		"ct_minRange",
+		"ct_maxRange",
+		"ct_rotate"
+		};
+
+	string $intSliderGrpList[] = {
+		"ct_spans",
+		"ct_rebuildSpans"
+		};
+
+	string $checkBoxList[] = {
+		"ct_rebuildCurve",
+		"ct_cap",
+		"ct_group",
+		"ct_history"
+		};
+
+	string $radioButtonGrpList[] = {
+		"ct_degree"
+		};
+
+	string $frameLayoutList[] = {
+		"ct_cFrame"
+		};
+
+	int $cnt;
+
+	if ( $mode == "store" )
+	{
+		for ( $cnt = 0; $cnt < size( $floatFieldList ); $cnt++ )
+			optionVar -floatValue $floatFieldList[$cnt] `floatField -q -value $floatFieldList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $intFieldList ); $cnt++ )
+			optionVar -intValue $intFieldList[$cnt] `intField -q -value $intFieldList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $floatSliderGrpList ); $cnt++ )
+			optionVar -floatValue $floatSliderGrpList[$cnt] `floatSliderGrp -q -value $floatSliderGrpList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $intSliderGrpList ); $cnt++ )
+			optionVar -intValue $intSliderGrpList[$cnt] `intSliderGrp -q -value $intSliderGrpList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $checkBoxList ); $cnt++ )
+			optionVar -intValue $checkBoxList[$cnt] `checkBox -q -value $checkBoxList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $radioButtonGrpList ); $cnt++ )
+			optionVar -intValue $radioButtonGrpList[$cnt] `radioButtonGrp -q -select $radioButtonGrpList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			optionVar -intValue $frameLayoutList[$cnt] `frameLayout -q -collapse $frameLayoutList[$cnt]`;
+	}
+
+	if ( $mode == "recall" )
+	{
+		for ( $cnt = 0; $cnt < size( $floatFieldList ); $cnt++ )
+			if ( `optionVar -exists $floatFieldList[$cnt]` )
+				floatField -e -value `optionVar -q $floatFieldList[$cnt]` $floatFieldList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $intFieldList ); $cnt++ )
+			if ( `optionVar -exists $intFieldList[$cnt]` )
+				intField -e -value `optionVar -q $intFieldList[$cnt]` $intFieldList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $floatSliderGrpList ); $cnt++ )
+			if ( `optionVar -exists $floatSliderGrpList[$cnt]` )
+				floatSliderGrp -e -value `optionVar -q $floatSliderGrpList[$cnt]` $floatSliderGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $intSliderGrpList ); $cnt++ )
+			if ( `optionVar -exists $intSliderGrpList[$cnt]` )
+				intSliderGrp -e -value `optionVar -q $intSliderGrpList[$cnt]` $intSliderGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $checkBoxList ); $cnt++ )
+			if ( `optionVar -exists $checkBoxList[$cnt]` )
+				checkBox -e -value `optionVar -q $checkBoxList[$cnt]` $checkBoxList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $radioButtonGrpList ); $cnt++ )
+			if ( `optionVar -exists $radioButtonGrpList[$cnt]` )
+				radioButtonGrp -e -select `optionVar -q $radioButtonGrpList[$cnt]` $radioButtonGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			if ( `optionVar -exists $frameLayoutList[$cnt]` )
+				frameLayout -e -collapse `optionVar -q $frameLayoutList[$cnt]` $frameLayoutList[$cnt];
+	}
+
+	if ( $mode == "reset" )
+	{
+		for ( $cnt = 0; $cnt < size( $floatFieldList ); $cnt++ )
+			optionVar -remove $floatFieldList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $intFieldList ); $cnt++ )
+			optionVar -remove $intFieldList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $floatSliderGrpList ); $cnt++ )
+			optionVar -remove $floatSliderGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $intSliderGrpList ); $cnt++ )
+			optionVar -remove $intSliderGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $checkBoxList ); $cnt++ )
+			optionVar -remove $checkBoxList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $radioButtonGrpList ); $cnt++ )
+			optionVar -remove $radioButtonGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			optionVar -remove $frameLayoutList[$cnt];
+	}
+}
+
+
+//
+// Create tube from curve
+//
+
+proc string[] ct_extrude ( string $crv, float $radius, float $min, float $max, int $spans, int $degree, float $rotate )
+{
+	// get start pos and tan of curve in world space
+	float $pos[] = `pointOnCurve -pr .00001 -position $crv`;
+	float $tan[] = `pointOnCurve -pr .00001 -tangent $crv`;
+	int $periodic = `getAttr ($crv + ".form")`;
+
+	// make circle at start matching curve tangent
+	string $profile[] = `circle -c $pos[0] $pos[1] $pos[2]
+				    -nr 0 1 0
+				    -r $radius
+				    -degree $degree
+				    -sections $spans`;
+
+	// put curve under new transform node
+	string $crvGrp = `group -n $profile[0]`;
+	$crvGrp = `rename $crvGrp "tubeConstruction#"`;
+
+	// move circle to curve start point
+	xform -cp $profile[0];
+
+	// rotate circle into position once before extruding
+	string $tc[] = `tangentConstraint -weight 1 -aimVector 0 1 0 -upVector 0 1 0 $crv $crvGrp`;
+
+	// get form (open/periodic)
+	string $form;
+	if (($periodic == 0) || ($min != 0) || ($max != 1))
+		$form = "true";
+	else
+		$form = "false";
+
+	// extrude spiral
+	string $tube[] = `eval ( "extrude -fixedPath true -range true -ucp true -upn " + $form + " -et 2 " + $profile[0] + " " + $crv )`;
+
+	// delete tangentConstraint
+	delete $tc[0];
+
+	// rotate circle into position
+	setAttr ($profile[0] + ".ry") $rotate;
+
+	// return	(0) profile transform node
+	//		(1) make nurbs circle node
+	//		(2) tube transform node
+	//		(3) extrude node
+	//		(4) curve form (open/periodic)
+	//		(5) curve group transform node
+	return {$profile[0], $profile[1], $tube[0], $tube[1], string($periodic), $crvGrp};
+}
+
+//
+// Main procedure
+//
+
+global proc ct_main ()
+{
+	// get settings from UI
+	float $radius =	`floatField -q -v ct_radius`;
+	float $min =	`floatSliderGrp -q -v ct_minRange`;
+	float $max =	`floatSliderGrp -q -v ct_maxRange`;
+	float $rotate =	`floatSliderGrp -q -v ct_rotate`;
+	int $history =	`checkBox -q -v ct_history`;
+	int $cap =	`checkBox -q -v ct_cap`;
+	int $group =	`checkBox -q -v ct_group`;
+	int $spans =	`intSliderGrp -q -v ct_spans`;
+	int $degree =	`radioButtonGrp -q -select ct_degree`;
+	int $rebuildCurve = `checkBox -q -v ct_rebuildCurve`;
+	int $rebuildSpans = `intSliderGrp -q -v ct_rebuildSpans`;
+
+	float $minValueV; // store tube minValueV for start cap positioning
+	float $maxValueV; // store tube maxValueV for end cap positioning
+	string $cap1[], $cap2[], $buffer[], $newCurve[], $dupList[], $rebList[];
+
+	string $postSelect[]; // store new geometry names for auto selection when tool has finished
+
+	// get selected nurbs curves and nurbs curves on surface
+	string $objList[] = `filterExpand -ex 1 -fp 1 -sm 9 -sm 11`;
+
+	string $isoparmList[] = `filterExpand -ex 1 -fp 1 -sm 45`;
+
+	// duplicate isoparms to nurbs curves
+	for ( $cnt = 0; $cnt < size( $isoparmList ); $cnt++ )
+	{
+		if ( $history )
+			$newCurve = `duplicateCurve -ch 1 -rn 0 -local 0 $isoparmList[$cnt]`;
+		else
+			$newCurve = `duplicateCurve -ch 0 -rn 0 -local 0 $isoparmList[$cnt]`;
+
+		$objList[size( $objList )] = $newCurve[0];
+		$dupList[size( $objList ) - 1] = $newCurve[0]; // store object for parenting
+	}
+
+	if ( size( $objList ) )
+	{
+		// correct degree value (1= linear, 3= cubic)
+		if ($degree == 2)
+			$degree = 3;
+
+		int $count;
+		for ( $count = 0; $count < size($objList); $count++ )
+		{
+			// rebuild curve
+			if ( $rebuildCurve )
+			{
+				string $buffer[];
+				int $curveDegree = `getAttr ( $objList[$count] + ".degree" )`;
+				if ( $history )
+				{
+//					$buffer = `duplicate $objList[$count]`;
+					$buffer = `rebuildCurve -ch 1 -rpo 0 -rebuildType 0 -spans $rebuildSpans -degree $curveDegree $objList[$count]`;
+					$objList[$count] = $buffer[0];
+					$rebList[$count] = $buffer[0]; // store object for parenting
+				}
+				else
+					rebuildCurve -ch 0 -rpo 1 -rebuildType 0 -spans $rebuildSpans -degree $curveDegree $objList[$count];
+			}
+
+			// extrude profile along path
+			string $extrude[] = `ct_extrude $objList[$count] $radius $min $max $spans $degree $rotate`;
+
+			// cap both ends
+			if ($cap)
+			{
+				string $tubeShape[] = `listRelatives -s $extrude[2]`;
+				$minValueV = `getAttr ($tubeShape[0] + ".minValueV")`;
+				$maxValueV = `getAttr ($tubeShape[0] + ".maxValueV")`;
+				$cap1 = `planarSrf -ch true ($extrude[2] + ".v[" + ($minValueV * $min) + "]")`;
+				$cap2 = `planarSrf -ch true ($extrude[2] + ".v[" + ($maxValueV * $max) + "]")`;
+				inheritTransform -off $cap1 $cap2;
+			}
+
+			if (!$history)
+			{
+				// delete construction objects curve
+				delete $extrude[5];
+
+				// delete duplicated isoparm
+				if ( $dupList[$count] != "" )
+					delete $dupList[$count];
+
+				// delete rebuild curve
+				if ( $rebList[$count] != "" )
+					delete $rebList[$count];
+			}
+			else
+			{
+				// add and connect construction history attributes
+				addAttr -sn trd -ln tubeRadius -at "float" -min 0 $extrude[2];
+				setAttr -keyable on ($extrude[2] + ".tubeRadius") $radius;
+				connectAttr ($extrude[2] + ".tubeRadius") ($extrude[1] + ".radius");
+
+				// get subCurve node
+				string $subCurve = `connectionInfo -sfd ($extrude[3] + ".path")`;
+				string $buffer[];
+				tokenize $subCurve "." $buffer;
+
+				addAttr -sn pmir -ln pathMinRange -at "float" -min 0 -max 1 $extrude[2];
+				setAttr -keyable on ($extrude[2] + ".pathMinRange") $min;
+				connectAttr ($extrude[2] + ".pathMinRange") ($buffer[0] + ".minValue");
+
+				addAttr -sn pmar -ln pathMaxRange -at "float" -min 0 -max 1 $extrude[2];
+				setAttr -keyable on ($extrude[2] + ".pathMaxRange") $max;
+				connectAttr ($extrude[2] + ".pathMaxRange") ($buffer[0] + ".maxValue");
+
+				// extra attribute for periodic curves and path min/max range
+				if (int ($extrude[4]) != 0)
+				{
+					expression -s  ("if (" + $extrude[2] + ".pathMinRange != 0 || " +
+							$extrude[2] + ".pathMaxRange != 1)\n" +
+							$extrude[3] + ".useProfileNormal = true;\n" +
+							"else\n" +
+							$extrude[3] + ".useProfileNormal = false;\n");
+				}
+
+				addAttr -sn rot -ln profileRotation -at "float" $extrude[2];
+				setAttr -keyable on ($extrude[2] + ".profileRotation") $rotate;
+				connectAttr ($extrude[2] + ".profileRotation") ($extrude[0] + ".ry");
+
+				addAttr -sn span -ln profileSpans -at "short" -min 3 -max 64 $extrude[2];
+				setAttr -keyable on ($extrude[2] + ".profileSpans") $spans;
+				connectAttr ($extrude[2] + ".profileSpans") ($extrude[1] + ".sections");
+
+				if ($cap)
+				{
+					// get curveFromSurface node
+					string $buffer[];
+
+					string $cfs1 = `connectionInfo -sfd ($cap1[1] + ".inputCurve[0]")`;
+					tokenize $cfs1 "." $buffer;
+					expression -s ($buffer[0] + ".isoparmValue = " +
+						       $extrude[2] + ".pathMinRange * " +
+						       ($maxValueV - $minValueV) + " + " + $minValueV + ";");
+
+					string $cfs2 = `connectionInfo -sfd ($cap2[1] + ".inputCurve[0]")`;
+					tokenize $cfs2 "." $buffer;
+					expression -s ($buffer[0] + ".isoparmValue = " +
+						       $extrude[2] + ".pathMaxRange * " +
+						       ($maxValueV - $minValueV) + " + " + $minValueV + ";");
+				}
+
+				// hide profile circle
+				hide $extrude[5];
+				
+				// parent other construction objects to group
+				if ( $dupList[$count] != "" )
+					parent $dupList[$count] $extrude[5];
+				if ( $rebList[$count] != "" )
+					parent $rebList[$count] $extrude[5];
+			}
+			// group tube & caps
+			if ( $group && $cap )
+				$postSelect[$count] = `group -n tubeGrp1 -w $extrude[2] $cap1[0] $cap2[0]`;
+			else
+				$postSelect[$count] = $extrude[2];
+		}
+		select -r $postSelect;
+	}
+	else
+		error "No nurbs curve selected";
+}
+
+// end of script

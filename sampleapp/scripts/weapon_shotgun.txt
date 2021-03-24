@@ -1,0 +1,82 @@
+WeaponData
+{
+	// Weapon characteristics:
+	"Damage"			"22"
+	"Bullets"			"9"
+	"CycleTime"			"0.5"
+	
+	// Weapon data is loaded by both the Game and Client DLLs.
+	"printname"			"#Cstrike_WPNHUD_m3"
+	"viewmodel"			"models/weapons/v_shot_m3super90.mdl"
+	"playermodel"			"models/weapons/w_shot_m3super90.mdl"
+	
+	"anim_prefix"			"anim"
+	"bucket"			"0"
+	"bucket_position"		"0"
+
+	"clip_size"			"8"
+	
+	"primary_ammo"			"AMMO_BULLETS"
+	"secondary_ammo"		"None"
+
+	"weight"			"20"
+	"item_flags"			"0"
+
+	// Sounds for the weapon. There is a max of 16 sounds per category (i.e. max 16 "single_shot" sounds)
+	SoundData
+	{
+		//"reload"			"Default.Reload"
+		//"empty"			"Default.ClipEmpty_Rifle"
+		"single_shot"			"Weapon_M3.Single"
+		special3			Default.Zoom
+	}
+
+	// Weapon Sprite data is loaded by the Client DLL.
+	TextureData
+	{
+		"weapon"
+		{
+				"font"		"CSweaponsSmall"
+				"character"	"K"
+		}
+		"weapon_s"
+		{	
+				"font"		"CSweapons"
+				"character"	"K"
+		}
+		"ammo"
+		{
+				"font"		"CSTypeDeath"
+				"character"	"J"
+		}
+		"crosshair"
+		{
+				"file"		"sprites/crosshairs"
+				"x"			"0"
+				"y"			"48"
+				"width"		"24"
+				"height"	"24"
+		}
+		"autoaim"
+		{
+				"file"		"sprites/crosshairs"
+				"x"			"0"
+				"y"			"48"
+				"width"		"24"
+				"height"	"24"
+		}
+	}
+	ModelBounds
+	{
+		Viewmodel
+		{
+			Mins	"-13 -3 -13"
+			Maxs	"26 10 -3"
+		}
+		World
+		{
+			Mins	"-9 -8 -5"
+			Maxs	"28 9 9"
+		}
+	}
+}

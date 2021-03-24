@@ -1,0 +1,6 @@
+"DebugLuxels"
+{
+	"$basetexture" "editor/lightmapgrid"
+	"$noscale" 1
+	"$vertexcolor" 1
+}

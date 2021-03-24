@@ -1,0 +1,36 @@
+global proc string compileQC (string $path, int $debug)
+	{
+	// calls studiomdl on a qc file passed as argument, or 
+	// looks for a QC file in the root of the current project
+	// if the first arg is a null string;
+	// returns the name of the qc file if it compiles correctly.
+	// if $debug is set to 1, the results of the compile
+	// will be printed to the Maya Console
+	// SJT 1/10/01
+
+	string $result;
+	if (`size $path` == 0)
+		{
+		string $fileName = `file -q -sceneName`;
+		string $baseName = `match "[^/]*$" $fileName`;
+		$baseName = `substitute "\\.[^\\./]*$" $baseName ""`;
+		string $fileRoot = `substitute "/[Ss][Cc][Ee][Nn][Ee][Ss]/.*$" $fileName "/"`;
+		$path = $fileRoot + $baseName + ".qc";
+		}
+
+	// Check out the mdl files....
+	$result = `system ("studiomdl " + $path)`;
+
+	string $error = `match " ERROR " $result`;
+	if (`size $error` == 0)
+		{
+		if ($debug)confirmDialog -title "results:" -message $result -defaultButton "OK";
+		return $path;
+		}
+		else
+		{
+		if ($debug)confirmDialog -title "oops" -message $result -defaultButton "OK";
+		error ($path + " did not compile");
+		return "";
+		}
+	}

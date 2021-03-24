@@ -1,0 +1,883 @@
+/* cpsToolbox.mel
+
+This script may be freely distributed. Modify at your own risk.
+
+Author: Dirk Bialluch <DirkBi@Software2000.de>
+
+Creation date:	09.01.2001
+Last update:	23.06.2001
+
+*/
+
+//
+// Create UI
+//
+
+global proc cpsToolbox ()
+{
+	int $uiWidth = 140;
+
+	if( `window -exists cpst_ui` )
+		deleteUI cpst_ui;
+
+	if( ( `window -exists cpst_editorUI` ) == true )
+		deleteUI cpst_editorUI;
+
+	// preload optionVar to get initial title bar settings
+	int $titleBar = 1;
+	if( `optionVar -exists cpst_mShowTitleBar` )
+		$titleBar = `optionVar -q cpst_mShowTitleBar`;
+
+	window
+		-titleBar $titleBar
+		-maximizeButton 0
+		-resizeToFitChildren 0
+		-title "CPS Toolbox"
+		-iconName "CPS Toolbox"
+		-menuBar true
+		-menuBarVisible true
+		-wh 176 242
+		-retain
+		cpst_ui;
+	menu
+		-label "Edit"
+		-tearOff 0;
+	menuItem
+    		-label "Init Toolbox"
+    		-c "cpst_main init";
+	menuItem
+    		-label "Clear Toolbox"
+    		-c "cpst_main clear";
+	menuItem
+    		-label "Store Toolbox"
+    		-c "cpst_main store";
+	menuItem
+		-divider 1;
+	menuItem
+		-l "Edit Toolbox"
+		-c "cpst_toolboxEditor";
+	menu
+		-label "Help"
+		-tearOff 0;
+	menuItem
+    		-label "Script Information"
+    		-c "cpsHelp";
+ 	menuItem
+		-divider 1;
+	menuItem
+    		-label "Visit CPS Homepage"
+    		-c "showHelp -a \"http://dirk-bialluch.mayaring.com/mel/html/mel_connectPolyShape.shtml\"";
+
+		string $cpst_form = `formLayout -numberOfDivisions 100 cpst_form`;
+			shelfTabLayout
+				-image "smallTrash.xpm"
+				-w 1
+				-h 1
+				-tabsVisible 1
+				-imageVisible 1
+				-scrollable 0
+				-childResizable 1
+				-minChildWidth 10
+				cpst_shelfTabLayout;
+				string $cpst_shelf = `shelfLayout
+					-w 1
+					-h 1
+					-cwh 34 34
+					cpsToolbox`;
+					setParent ..;
+					popupMenu -button 3;
+			    			menuItem
+							-checkBox 1
+			    				-l "Show Title Bar"
+			    				-c "cpst_main store; cpst_main adjustUI;"
+			    				cpst_mShowTitleBar;
+			    			menuItem
+							-checkBox 1
+			    				-l "Show Menu"
+			    				-c "cpst_main store; cpst_main adjustUI;"
+			    				cpst_mShowMenu;
+			    			menuItem
+							-checkBox 1
+			    				-l "Show Tab"
+			    				-c "cpst_main store; cpst_main adjustUI;"
+			    				cpst_mShowTab;
+			    			menuItem
+							-checkBox 1
+			    				-l "Show Close Button"
+			    				-c "cpst_main store; cpst_main adjustUI;"
+			    				cpst_mShowCloseButton;
+			    			menuItem
+			    				-divider 1;
+			    			menuItem
+			    				-l "Connect Poly Shape Options"
+			    				-c "connectPolyShape";
+			    			menuItem
+			    				-l "CPS Control"
+			    				-c "cpsControl";
+			    			menuItem
+			    				-divider 1;
+			    			menuItem
+			    				-l "Edit Toolbox"
+		    					-c "cpst_toolboxEditor";
+			    			menuItem
+			    				-divider 1;
+						menuItem
+					    		-label "Init Toolbox"
+					    		-c "cpst_main init";
+						menuItem
+					    		-label "Clear Toolbox"
+					    		-c "cpst_main clear";
+						menuItem
+					    		-label "Store Toolbox"
+					    		-c "cpst_main store";
+			    			menuItem
+			    				-divider 1;
+						menuItem
+					    		-label "Script Information"
+					    		-c "cpsHelp";
+						menuItem
+							-divider 1;
+						menuItem
+					    		-label "Visit CPS Homepage"
+					    		-c "showHelp -a \"http://dirk-bialluch.mayaring.com/mel/html/mel_connectPolyShape.shtml\"";
+			   			menuItem
+			    				-divider 1;
+						menuItem
+					    		-label "Recall Window Layout 1"
+					    		-c "cpst_windowLayout recallWindowLayout1 1";
+						menuItem
+					    		-label "Recall Window Layout 2"
+					    		-c "cpst_windowLayout recallWindowLayout2 1";
+						menuItem
+					    		-label "Store Window Layout 1"
+					    		-c "cpst_windowLayout storeWindowLayout1 0";
+						menuItem
+					    		-label "Store Window Layout 2"
+					    		-c "cpst_windowLayout storeWindowLayout2 0";
+						menuItem
+							-checkBox 0
+					    		-label "Recall CPS Control Layout"
+			    				-c "cpst_main store; cpst_main adjustUI;"
+			    				cpst_mUIrecallToolboxLayout;
+		    				menuItem
+							-divider 1;
+						menuItem
+					    		-label "Close CPS Toolbox"
+					    		-c "deleteUI cpst_ui";
+					setParent ..;
+				setParent ..;
+			button
+				-label "Close"
+				-command "deleteUI cpst_ui"
+				-h 15 // height will be set to other value in "cpst_main adjustUI", value must be different at startup
+				cpst_closeButton;
+			button
+				-label "I"
+				-ann "Recall window layout 1. RMB click to store current window layout."
+				-command "cpst_windowLayout recallWindowLayout1 1"
+				-h 15
+				cpst_pos1Button;
+				popupMenu -button 3;
+	    			menuItem
+	    				-l "Store Window Layout 1"
+	    				-c "cpst_windowLayout storeWindowLayout1 0";
+			button
+				-label "II"
+				-ann "Recall window layout 2. RMB click to store current window layout."
+				-command "cpst_windowLayout recallWindowLayout2 1"
+				-h 15
+				cpst_pos2Button;
+				popupMenu -button 3;
+	    			menuItem
+	    				-l "Store Window Layout 2"
+	    				-c "cpst_windowLayout storeWindowLayout2 0";
+
+	// set form layouts
+	formLayout -edit
+		-attachForm cpst_shelfTabLayout "top" 2
+		-attachForm cpst_shelfTabLayout "left" 2
+		-attachControl cpst_shelfTabLayout "bottom" 2 cpst_closeButton
+		-attachForm cpst_shelfTabLayout "right" 2
+
+		-attachNone cpst_closeButton "top"
+		-attachForm cpst_closeButton "left" 2
+		-attachForm cpst_closeButton "bottom" 2
+		-attachPosition cpst_closeButton "right" 2 70
+
+		-attachControl cpst_pos1Button "top" 2 cpst_shelfTabLayout
+		-attachPosition cpst_pos1Button "left" 2 70
+		-attachForm cpst_pos1Button "bottom" 2
+		-attachPosition cpst_pos1Button "right" 2 85
+
+		-attachControl cpst_pos2Button "top" 2 cpst_shelfTabLayout
+		-attachPosition cpst_pos2Button "left" 2 85
+		-attachForm cpst_pos2Button "bottom" 2
+		-attachPosition cpst_pos2Button "right" 2 100
+		$cpst_form;
+
+	cpst_main recall;
+	cpst_main adjustUI;
+
+	showWindow cpst_ui;
+}
+
+// Confirm Dialog
+proc string cpst_confirmDialog( string $message )
+{
+	return ( `confirmDialog
+	-title "CPS Toolbox"
+	-message $message
+	-button "OK"
+	-button "Cancel"
+	-defaultButton "Cancel"
+	-cancelButton "Cancel"
+	-dismissString "Cancel"` );
+}
+
+proc cpst_createShelfButtons( string $content[] )
+{
+	setParent cpsToolbox;
+
+	if( size( $content ) )
+	{
+		// get number of entries per shelfButton
+		int $num = $content[0];
+	
+		for( $cnt = 0; $cnt < size( $content ) / $num; $cnt++ )
+		{
+			shelfButton
+				-image1 $content[$cnt * $num + 1]
+				-command $content[$cnt * $num + 2]
+				-doubleClickCommand $content[$cnt * $num + 3]
+				-annotation $content[$cnt * $num + 4]
+				-imageOverlayLabel $content[$cnt * $num + 5];
+			popupMenu
+				-button 3
+				-postMenuCommand $content[$cnt * $num + 3]
+				-altModifier 1;
+		}
+	}
+}
+
+proc cpst_removeShelfButtons()
+{
+	// get all icons from shelf
+	string $buttons[] = `shelfLayout -q -childArray cpsToolbox`;
+	if( size( $buttons ) )
+		deleteUI $buttons;
+}
+
+proc string[] cpst_getShelfButtonEntries()
+{
+	string $icons[], $entryList[];
+
+	// get all icons from shelf
+	$icons = `shelfLayout -q -childArray cpsToolbox`;
+
+	// 1st value: number of entries per shelfButton
+	$entryList[0] = "5";
+
+	// get data of all shelf button
+	for( $cnt = 0; $cnt < size( $icons ); $cnt++ )
+	{
+		$entryList[size( $entryList )] = `shelfButton -q -image1 $icons[$cnt]`;
+		$entryList[size( $entryList )] = `shelfButton -q -command $icons[$cnt]`;
+		$entryList[size( $entryList )] = `shelfButton -q -doubleClickCommand $icons[$cnt]`;
+		$entryList[size( $entryList )] = `shelfButton -q -annotation $icons[$cnt]`;
+		$entryList[size( $entryList )] = `shelfButton -q -imageOverlayLabel $icons[$cnt]`;
+	}
+
+	return $entryList;
+}
+
+global proc cpst_showEditorEntry()
+{
+	int $selection[] = `textScrollList -q -selectIndexedItem cpst_edScrollList`;
+	$selection[0] -= 1;
+
+	if( $selection[0] >= 0 )
+	{
+		string $entryList[] = `cpst_getShelfButtonEntries`;
+	
+		int $entryNum = $entryList[0];
+	
+		textField -e -text $entryList[$selection[0] * $entryNum + 4] cpst_annotation;
+		textField -e -text $entryList[$selection[0] * $entryNum + 2] cpst_command ;
+		textField -e -text $entryList[$selection[0] * $entryNum + 3] cpst_doubleClickCommand;
+		textField -e -text $entryList[$selection[0] * $entryNum + 5] cpst_overlayLabel;
+		textField -e -text $entryList[$selection[0] * $entryNum + 1] cpst_image;
+	}
+	else
+	{
+		textField -e -text "" cpst_annotation;
+		textField -e -text "" cpst_command ;
+		textField -e -text "" cpst_doubleClickCommand;
+		textField -e -text "" cpst_overlayLabel;
+		textField -e -text "" cpst_image;
+	}
+}
+
+proc cpst_edBuildEntryList( int $activeEntry )
+{
+	// build entries
+	string $entryList[] = `cpst_getShelfButtonEntries`;
+	int $entryNum = $entryList[0];
+
+	textScrollList -e -removeAll cpst_edScrollList;
+
+	// add all shelfButton to list
+	for( $cnt = 0; $cnt < ( size( $entryList ) - 1 ) / $entryNum; $cnt++ )
+	{
+		if( size( $entryList[$cnt * $entryNum + 4] ) )
+			textScrollList -e -append $entryList[$cnt * $entryNum + 4] cpst_edScrollList;
+		else
+			textScrollList -e -append "Unnamed" cpst_edScrollList;
+	}
+
+	string $icons[] = `shelfLayout -q -childArray cpsToolbox`;
+	if( size( $icons ) )
+		textScrollList -e -selectIndexedItem $activeEntry cpst_edScrollList;
+
+	cpst_showEditorEntry;
+}	
+
+global proc cpst_storeEditorEntry()
+{
+	string $icons[] = `shelfLayout -q -childArray cpsToolbox`;
+	int $selection[] = `textScrollList -q -selectIndexedItem cpst_edScrollList`;
+
+	if( $selection[0] >= 1 )
+	{
+		shelfButton
+			-e
+			-image1 `textField -q -text cpst_image`
+			-command `textField -q -text cpst_command`
+			-doubleClickCommand `textField -q -text cpst_doubleClickCommand`
+			-annotation `textField -q -text cpst_annotation`
+			-imageOverlayLabel `textField -q -text cpst_overlayLabel`
+			$icons[$selection[0] - 1];
+	
+		// rebuild entry list
+		cpst_edBuildEntryList $selection[0];
+	
+		// store shelf buttons
+		cpst_main store;
+	}
+}
+
+global proc cpst_addEditorEntry()
+{
+	setParent cpsToolbox;
+	shelfButton
+		-image1 "cpsEmpty.xpm"
+		-annotation "Empty";
+
+	// rebuild entry list
+	int $numberOfItems = `textScrollList -q -numberOfItems cpst_edScrollList`;
+	cpst_edBuildEntryList ( $numberOfItems + 1 );
+
+	// store shelf buttons
+	cpst_main store;
+}
+
+global proc cpst_deleteEditorEntry()
+{
+	// get all icons from shelf
+	string $icons[] = `shelfLayout -q -childArray cpsToolbox`;
+
+	// get selected entry
+	int $selection[] = `textScrollList -q -selectIndexedItem cpst_edScrollList`;
+
+	if( $selection[0] >= 1 )
+	{
+		// delete shelf button
+		deleteUI $icons[$selection[0] - 1];
+
+		if( $selection[0] > size( $icons ) - 1 )
+			$selection[0] = size( $icons ) - 1;
+	
+		// rebuild entry list
+		cpst_edBuildEntryList $selection[0];
+	
+		// store shelf buttons
+		cpst_main store;
+	}
+}
+
+global proc cpst_toolboxEditor()
+{
+	cpst_main store;
+
+	if( `window -exists cpst_editorUI` )
+		deleteUI cpst_editorUI;
+
+	window
+		-wh 330 370
+		-maximizeButton 0
+		-resizeToFitChildren 0
+		-title "CPS Toolbox Editor"
+		-iconName "CPS Toolbox Editor"
+		-menuBar true
+		-menuBarVisible true
+		cpst_editorUI;
+		string $cpst_edForm = `formLayout -numberOfDivisions 100`;
+			textScrollList
+				-allowMultiSelection 0
+				-selectCommand "cpst_showEditorEntry"
+				-deleteKeyCommand "cpst_deleteEditorEntry"
+			    	cpst_edScrollList;
+
+			columnLayout -adjustableColumn 1 cpst_edBottomLayout;
+				rowLayout
+					-numberOfColumns 2
+					-cat 1 "right" 5
+					-adjustableColumn2 2
+					-columnWidth 1 130
+					cpst_rAnnotation;
+					text
+						-l "Annotation";
+					textField
+						-enterCommand "cpst_storeEditorEntry"
+						cpst_annotation;
+					setParent ..;
+				rowLayout
+					-numberOfColumns 2
+					-cat 1 "right" 5
+					-adjustableColumn2 2
+					-columnWidth 1 130
+					cpst_rCommand;
+					text
+						-l "Command";
+					textField
+						-enterCommand "cpst_storeEditorEntry"
+						cpst_command;
+					setParent ..;
+				rowLayout
+					-numberOfColumns 2
+					-cat 1 "right" 5
+					-adjustableColumn2 2
+					-columnWidth 1 130
+					cpst_rDoubleClickCommand;
+					text
+						-l "Double Click Command";
+					textField
+						-enterCommand "cpst_storeEditorEntry"
+						cpst_doubleClickCommand;
+					setParent ..;
+				rowLayout
+					-numberOfColumns 2
+					-cat 1 "right" 5
+					-adjustableColumn2 2
+					-columnWidth 1 130
+					cpst_rOverlayLabel;
+					text
+						-l "Icon Name";
+					textField
+						-enterCommand "cpst_storeEditorEntry"
+						cpst_overlayLabel;
+					setParent ..;
+				rowLayout
+					-numberOfColumns 2
+					-cat 1 "right" 5
+					-adjustableColumn2 2
+					-columnWidth 1 130
+					cpst_rImage;
+					text
+						-l "Image";
+					textField
+						-enterCommand "cpst_storeEditorEntry"
+						cpst_image;
+					setParent ..;
+				setParent ..;
+
+			button
+				-label "Store"
+				-command "cpst_storeEditorEntry"
+				cpst_edStoreButton;
+			button
+				-label "Add"
+				-command "cpst_addEditorEntry"
+				cpst_edAddButton;
+			button
+				-label "Delete"
+				-command "cpst_deleteEditorEntry"
+				cpst_edDeleteButton;
+			button
+				-label "Close"
+				-command "deleteUI cpst_editorUI"
+				cpst_edCloseButton;
+
+	// set form layouts
+	formLayout -edit
+		-attachForm cpst_edScrollList "top" 2
+		-attachForm cpst_edScrollList "left" 2
+		-attachControl cpst_edScrollList "bottom" 2 cpst_edBottomLayout
+		-attachForm cpst_edScrollList "right" 2
+
+		-attachNone cpst_edBottomLayout "top"
+		-attachForm cpst_edBottomLayout "left" 2
+		-attachForm cpst_edBottomLayout "bottom" 28
+		-attachForm cpst_edBottomLayout "right" 2
+
+		-attachNone cpst_edStoreButton "top"
+		-attachForm cpst_edStoreButton "left" 2
+		-attachForm cpst_edStoreButton "bottom" 2
+		-attachPosition cpst_edStoreButton "right" 0 25
+
+		-attachNone cpst_edAddButton "top"
+		-attachPosition cpst_edAddButton "left" 0 25
+		-attachForm cpst_edAddButton "bottom" 2
+		-attachPosition cpst_edAddButton "right" 0 50
+
+		-attachNone cpst_edDeleteButton "top"
+		-attachPosition cpst_edDeleteButton "left" 0 50
+		-attachForm cpst_edDeleteButton "bottom" 2
+		-attachPosition cpst_edDeleteButton "right" 0 75
+
+		-attachNone cpst_edCloseButton "top"
+		-attachPosition cpst_edCloseButton "left" 0 75
+		-attachForm cpst_edCloseButton "bottom" 2
+		-attachPosition cpst_edCloseButton "right" 0 100
+		$cpst_edForm;
+
+	cpst_edBuildEntryList 1;
+
+	if( ( `window -exists cpst_ui` ) == true )
+	{
+		window -e -iconify 1 cpst_ui; // iconify to avoid problems when calling the toolbox from cpsControl while in editor
+		window -e -visible 0 cpst_ui;
+	}
+
+	showWindow cpst_editorUI;
+
+	// create spiral script exit scriptJob (delete help window)
+	scriptJob
+		-parent cpst_editorUI
+		-uiDeleted cpst_editorUI cpst_editorExit;
+}
+
+//
+// quit editor
+//
+
+global proc cpst_editorExit ()
+{
+	cpsToolbox;
+}
+
+global proc cpst_windowLayout( string $function, int $mode )
+{
+	if( $function == "recallWindowLayout1" )
+	{
+		if( `optionVar -exists cpst_windowPos1` && `optionVar -exists cpst_windowSize1` )
+		{
+			window -e -h 1 cpst_ui; // temporarily shrink window to avoid flickering
+
+			int $pos[] = `optionVar -q cpst_windowPos1`;
+			window -e -tlc $pos[0] $pos[1] cpst_ui;
+
+			int $size[] = `optionVar -q cpst_windowSize1`;
+			window -e -wh $size[0] $size[1] cpst_ui;
+		}
+		else
+			print "CPS Toolbox window layout 1 not defined. Use the right mouse button to store a window layout.\n";
+
+		if( `window -exists cpsc_ui` && `menuItem -q -checkBox cpst_mUIrecallToolboxLayout` && $mode == 1 )
+			cpsc_windowLayout recallWindowLayout1 0;
+	}
+
+	if( $function == "recallWindowLayout2" )
+	{
+		if( `optionVar -exists cpst_windowPos2` && `optionVar -exists cpst_windowSize2` )
+		{
+			window -e -h 1 cpst_ui; // temporarily shrink window to avoid flickering
+
+			int $pos[] = `optionVar -q cpst_windowPos2`;
+			window -e -tlc $pos[0] $pos[1] cpst_ui;
+
+			int $size[] = `optionVar -q cpst_windowSize2`;
+			window -e -wh $size[0] $size[1] cpst_ui;
+		}
+		else
+			print "CPS Toolbox window layout 2 not defined. Use the right mouse button to store a window layout.\n";
+
+		if( `window -exists cpsc_ui` && `menuItem -q -checkBox cpst_mUIrecallToolboxLayout` && $mode == 1 )
+			cpsc_windowLayout recallWindowLayout2 0;
+	}
+
+	if( $function == "storeWindowLayout1" )
+	{
+		int $pos[] = `window -q -tlc cpst_ui`;
+		optionVar -intValue cpst_windowPos1 $pos[0];
+		optionVar -intValueAppend cpst_windowPos1 $pos[1];
+
+		int $size[] = `window -q -wh cpst_ui`;
+		optionVar -intValue cpst_windowSize1 $size[0];
+		optionVar -intValueAppend cpst_windowSize1 $size[1];
+
+		print "Stored CPS Toolbox window layout 1\n";
+	}
+
+	if( $function == "storeWindowLayout2" )
+	{
+		int $pos[] = `window -q -tlc cpst_ui`;
+		optionVar -intValue cpst_windowPos2 $pos[0];
+		optionVar -intValueAppend cpst_windowPos2 $pos[1];
+
+		int $size[] = `window -q -wh cpst_ui`;
+		optionVar -intValue cpst_windowSize2 $size[0];
+		optionVar -intValueAppend cpst_windowSize2 $size[1];
+
+		print "Stored CPS Toolbox window layout 2\n";
+	}
+}
+
+//
+// Main procedure
+//
+global proc cpst_main ( string $function )
+{
+	string $preset[] = {
+	"5",			// number of entries per shelfButton
+
+	"connectPolyShape.xpm",	// image1
+	"if( `window -q -exists cps_ui` )" +
+	"{" +
+		"if( `window -q -iconify cps_ui` )" +
+			"window -e -iconify 0 cps_ui;" +
+		"else if( !`window -q -visible cps_ui` )" +
+			"window -e -visible 1 cps_ui;" +
+		"else " +
+			"deleteUI cps_ui;" +
+	"}" +
+	"else " +
+		"connectPolyShape;", // command
+	"",			// doubleClickCommand
+	"Connect Poly Shape",	// annotation
+	"",			// imageOverlayLabel
+
+	"cpsControl.xpm",
+	"if( `window -q -exists cpsc_ui` )" +
+	"{" +
+		"if( `window -q -iconify cpsc_ui` )" +
+			"window -e -iconify 0 cpsc_ui;" +
+		"else if( !`window -q -visible cpsc_ui` )" +
+			"window -e -visible 1 cpsc_ui;" +
+		"else " +
+			"deleteUI cpsc_ui;" +
+	"}" +
+	"else " +
+		"cpsControl;", // command
+	"",
+	"CPS Control",
+	"",
+
+	"polyCube.xpm",
+	"CreatePolygonCube",
+	"CreatePolygonCubeOptions",
+	"Create Polygon Cube",
+	"",
+
+	"polyMesh.xpm",
+	"CreatePolygonPlane",
+	"CreatePolygonPlaneOptions",
+	"Create Polygon Plane",
+	"",
+
+	"polyCreateFacet.xpm",
+	"CreatePolygonTool",
+	"CreatePolygonToolOptions",
+	"Create Polygon Tool",
+	"",
+
+	"polyAppendFacet.xpm",
+	"AppendToPolygonTool",
+	"AppendToPolygonToolOptions",
+	"Append to Polygon Tool",
+	"",
+
+	"polySplitFacet.xpm",
+	"SplitPolygonTool",
+	"SplitPolygonToolOptions",
+	"Split Polygon",
+	"",
+
+	"polyExtrudeFacet.xpm",
+	"ExtrudeFace",
+	"ExtrudeFaceOptions",
+	"Extrude Face",
+	"",
+
+	"polyExtrudeEdge.xpm",
+	"ExtrudeEdge",
+	"ExtrudeEdgeOptions",
+	"Extrude Edge",
+	"",
+
+	"polySubdFacet.xpm",
+	"SubdividePolygon",
+	"SubdividePolygonOptions",
+	"Subdivide Polygon",
+	"",
+
+	"polySmooth.xpm",
+	"SmoothPolygon",
+	"SmoothPolygonOptions",
+	"Smooth Polygon",
+	"",
+
+	"polyCollapseEdge.xpm",
+	"performPolyCollapse 0",
+	"",
+	"Collapse",
+	"",
+
+	"polyFlipEdge.xpm",
+	"polyFlipEdge",
+	"",
+	"Flip Triangle Edge",
+	"",
+
+	"polyLoopEdge.xpm",
+	"performSelContiguousEdges 0",
+	"performSelContiguousEdges 1",
+	"Select Contiguous Edges",
+	"",
+
+	"polyDelVertex.xpm",
+	"polyDeleteVertex",
+	"",
+	"Delete Vertex",
+	"",
+
+	"polyDelEdge.xpm",
+	"polyPerformAction \"polyDelEdge -cv true\" e 0",
+	"",
+	"Delete Edge",
+	""
+	};
+
+	string $clear[] = { "5" }; // number of entries per shelfButton
+
+	if( $function == "init" )
+	{
+		if( `cpst_confirmDialog "Initialize toolbox to default settings?"` == "OK" );
+		{
+			// clear existing optionVar
+			optionVar -remove cpst_icons;
+
+			// remove existing shelf buttons
+			cpst_removeShelfButtons;
+
+			// create shelf buttons
+			cpst_createShelfButtons $preset;
+
+			// store shelf buttons
+			cpst_main store;
+		}
+	}
+
+	if( $function == "clear" )
+	{
+		if( `cpst_confirmDialog "Clear toolbox content?"` == "OK" );
+		{
+			// clear existing optionVar
+			optionVar -remove cpst_icons;
+
+			// remove existing shelf buttons
+			cpst_removeShelfButtons;
+
+			// create shelf buttons
+			cpst_createShelfButtons $clear;
+
+			// store shelf buttons
+			cpst_main store;
+
+			cpsToolbox;
+		}
+	}
+
+	if( $function == "recall" )
+	{
+		// recall other UI settings
+		if( `optionVar -exists cpst_mShowTitleBar` )
+			menuItem -e -checkBox `optionVar -q cpst_mShowTitleBar` cpst_mShowTitleBar;
+		if( `optionVar -exists cpst_mShowMenu` )
+			menuItem -e -checkBox `optionVar -q cpst_mShowMenu` cpst_mShowMenu;
+		if( `optionVar -exists cpst_mShowTab` )
+			menuItem -e -checkBox `optionVar -q cpst_mShowTab` cpst_mShowTab;
+		if( `optionVar -exists cpst_mShowCloseButton` )
+			menuItem -e -checkBox `optionVar -q cpst_mShowCloseButton` cpst_mShowCloseButton;
+		if( `optionVar -exists cpst_mUIrecallToolboxLayout` )
+			menuItem -e -checkBox `optionVar -q cpst_mUIrecallToolboxLayout` cpst_mUIrecallToolboxLayout;
+
+		string $store[];
+		
+		if( `optionVar -exists cpst_icons` )
+		{
+			$store = `optionVar -q cpst_icons`;
+
+			// create shelf buttons
+			cpst_createShelfButtons $store;
+		}
+		else
+		{
+			// create shelf buttons
+			cpst_createShelfButtons $preset;
+
+			// store shelf buttons
+			cpst_main store;
+		}
+	}
+
+	if( $function == "store" )
+	{
+		string $icons[], $entryList[];
+
+		$entryList = `cpst_getShelfButtonEntries`;
+
+		// clear existing optionVar
+		optionVar -remove cpst_icons;
+
+		// store all shelfButton
+		for( $cnt = 0; $cnt < size( $entryList ); $cnt++ )
+			optionVar -stringValueAppend cpst_icons $entryList[$cnt];
+
+		// store other UI settings
+		optionVar -intValue cpst_mShowTitleBar `menuItem -q -checkBox cpst_mShowTitleBar`;
+		optionVar -intValue cpst_mShowMenu `menuItem -q -checkBox cpst_mShowMenu`;
+		optionVar -intValue cpst_mShowTab `menuItem -q -checkBox cpst_mShowTab`;
+		optionVar -intValue cpst_mShowCloseButton `menuItem -q -checkBox cpst_mShowCloseButton`;
+		optionVar -intValue cpst_mUIrecallToolboxLayout `menuItem -q -checkBox cpst_mUIrecallToolboxLayout`;
+	}
+
+	if( $function == "adjustUI" )
+	{
+		window -e -titleBar ( `menuItem -q -checkBox cpst_mShowTitleBar` ) cpst_ui;
+		window -e -menuBarVisible ( `menuItem -q -checkBox cpst_mShowMenu` ) cpst_ui;
+
+		if( `menuItem -q -checkBox cpst_mShowTab` )
+			shelfTabLayout -e -tabsVisible 1 -imageVisible 1 cpst_shelfTabLayout;
+		else
+			shelfTabLayout -e -tabsVisible 0 -imageVisible 0 cpst_shelfTabLayout;
+
+		if( `menuItem -q -checkBox cpst_mShowCloseButton` )
+		{
+			if( `button -q -h cpst_closeButton` == 1 )
+				window -e -h ( `window -q -h cpst_ui` + 20 ) cpst_ui;
+			button -e -h 20 -visible 1 cpst_closeButton;
+			button -e -h 20 -visible 1 cpst_pos1Button;
+			button -e -h 20 -visible 1 cpst_pos2Button;
+		}
+		else
+		{
+			if( `button -q -h cpst_closeButton` == 20 )
+				window -e -h ( `window -q -h cpst_ui` - 20 ) cpst_ui;
+			button -e -h 1 -visible 0 cpst_closeButton;
+			button -e -h 1 -visible 0 cpst_pos1Button;
+			button -e -h 1 -visible 0 cpst_pos2Button;
+		}
+	}
+}
+
+// end of script

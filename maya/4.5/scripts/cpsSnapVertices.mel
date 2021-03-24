@@ -1,0 +1,354 @@
+/* cpsSnapVertices.mel
+
+This script may be freely distributed. Modify at your own risk.
+
+Author: Dirk Bialluch <DirkBi@Software2000.de>
+
+Creation date:	05.04.2001
+Last update:	30.05.2001
+
+*/
+
+//
+// Create UI
+//
+
+global proc cpsSnapVertices()
+{
+	// check if required cpsControl commands are already sourced
+	if( !`exists cpsc_filterOriginal` || !`exists cpsc_getResultFromOriginal` )
+		source cpsControl;
+
+	int $uiLabelWidth = 100;
+	int $uiInputWidth = 240;
+	int $uiWidth = $uiLabelWidth + $uiInputWidth;
+
+	if( `window -exists cpsv_ui` )
+		deleteUI cpsv_ui;
+
+	window
+		-wh 380 150
+		-titleBar 1
+		-maximizeButton 0
+		-resizeToFitChildren 0
+		-title "CPS Snap Vertices"
+		-iconName "CPS Snap Vertices"
+		-menuBar 1
+		-menuBarVisible 1
+		cpsv_ui;
+
+		menu
+			-label "Edit"
+			-tearOff false;
+		menuItem
+	    		-label "Reset Settings"
+	    		-c "cpsv_storeRecallUI reset; cpsSnapVertices";
+
+ 		string $cpsv_form = `formLayout -numberOfDivisions 100`;
+			string $cpsv_scroll = `scrollLayout -hst 16 -vst 16 -childResizable true -minChildWidth $uiWidth`;
+				columnLayout -adjustableColumn 1;
+					frameLayout
+						-label "Snap Options"
+						-labelAlign "center"
+						-cll true
+						-lw $uiWidth
+						-mh 3
+		                                -borderStyle "etchedIn"
+						-cc "cpsc_storeRecallUI store"
+						-ec "cpsc_storeRecallUI store"
+						-bv true
+						cpsv_soFrame;
+						columnLayout -adjustableColumn 1;
+							rowLayout
+								-numberOfColumns 4
+								-cat 1 "right" 5
+								-columnWidth 1 $uiLabelWidth
+								-columnWidth 2 40
+								-columnWidth 3 40;
+								text
+									-l "Enable Axes"
+									-ann "Enable axes for snapping";
+								checkBox
+									-h 20
+									-label "X"
+									-value true
+									-cc "cpsv_adjustUI"
+									cpsv_enableXAxis;
+								checkBox
+									-h 20
+									-label "Y"
+									-value true
+									-cc "cpsv_adjustUI"
+									cpsv_enableYAxis;
+								checkBox
+									-h 20
+									-label "Z"
+									-value true
+									-cc "cpsv_adjustUI"
+									cpsv_enableZAxis;
+								setParent ..;
+							rowLayout
+								-numberOfColumns 4
+								-cat 1 "right" 5
+								-columnWidth 1 $uiLabelWidth
+								-columnWidth 2 40
+								-columnWidth 3 40
+								cpsv_rSnapTolerance;
+								text
+									-l "Snap Tolerance"
+									-ann "Set snap tolerance in worldspace coordinates";
+								floatSliderGrp
+									-field true
+									-sliderStep .1
+									-value 0.01
+									-minValue 0.0001
+									-maxValue 1
+									-fieldMinValue 0.0001
+									-fieldMaxValue 0x7ffffff
+									-precision 4
+									-cc "cpsv_storeRecallUI store"
+									cpsv_snapTolerance;
+								setParent ..;
+							setParent ..;
+						setParent ..;
+					setParent ..;
+				setParent ..;
+
+			button
+				-label "Snap and Select"
+				-command "cpsv_main snapAndSelect"
+				cpsv_b1;
+			button
+				-label "Snap"
+				-command "cpsv_main snap"
+				cpsv_b2;
+			button
+				-label "Select"
+				-command "cpsv_main select"
+				cpsv_b3;
+			button
+				-label "Close"
+				-command "deleteUI cpsv_ui"
+				cpsv_b4;
+
+	// set form layouts
+	formLayout -edit
+		-attachForm $cpsv_scroll "top" 2
+		-attachForm $cpsv_scroll "left" 2
+		-attachControl $cpsv_scroll "bottom" 2 cpsv_b1
+		-attachForm $cpsv_scroll "right" 2
+
+		-attachNone cpsv_b1 "top"
+		-attachForm cpsv_b1 "left" 2
+		-attachForm cpsv_b1 "bottom" 2
+		-attachPosition cpsv_b1 "right" 2 40
+
+		-attachNone cpsv_b2 "top"
+		-attachPosition cpsv_b2 "left" 2 40
+		-attachForm cpsv_b2 "bottom" 2
+		-attachPosition cpsv_b2 "right" 2 60
+
+		-attachNone cpsv_b3 "top"
+		-attachPosition cpsv_b3 "left" 2 60
+		-attachForm cpsv_b3 "bottom" 2
+		-attachPosition cpsv_b3 "right" 2 80
+
+		-attachNone cpsv_b4 "top"
+		-attachPosition cpsv_b4 "left" 2 80
+		-attachForm cpsv_b4 "bottom" 2
+		-attachPosition cpsv_b4 "right" 2 100
+		$cpsv_form;
+
+	cpsv_storeRecallUI recall;
+	cpsv_adjustUI;
+	showWindow cpsv_ui;
+}
+
+global proc cpsv_adjustUI()
+{
+	if( `checkBox -q -v cpsv_enableXAxis` || `checkBox -q -v cpsv_enableYAxis` || `checkBox -q -v cpsv_enableZAxis` )
+	{
+		rowLayout -e -enable 1 cpsv_rSnapTolerance;
+ 		button -e -enable 1 cpsv_b1;
+		button -e -enable 1 cpsv_b2;
+		button -e -enable 1 cpsv_b3;
+	}
+	else
+	{
+		rowLayout -e -enable 0 cpsv_rSnapTolerance;
+		button -e -enable 0 cpsv_b1;
+		button -e -enable 0 cpsv_b2;
+		button -e -enable 0 cpsv_b3;
+	}
+	
+	cpsv_storeRecallUI store;
+}
+
+global proc cpsv_storeRecallUI( string $mode )
+{
+	string $frameLayoutList[] = {
+		"cpsv_soFrame" };
+
+	string $floatSliderGrpList[] = {
+		"cpsv_snapTolerance" };
+
+	string $checkBoxList[] = {
+		"cpsv_enableXAxis",
+		"cpsv_enableYAxis",
+		"cpsv_enableZAxis" };
+
+	int $cnt;
+
+	if ( $mode == "store" )
+	{
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			optionVar -intValue $frameLayoutList[$cnt] `frameLayout -q -collapse $frameLayoutList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $floatSliderGrpList ); $cnt++ )
+			optionVar -floatValue $floatSliderGrpList[$cnt] `floatSliderGrp -q -value $floatSliderGrpList[$cnt]`;
+
+		for ( $cnt = 0; $cnt < size( $checkBoxList ); $cnt++ )
+			optionVar -intValue $checkBoxList[$cnt] `checkBox -q -value $checkBoxList[$cnt]`;
+	}
+
+	if ( $mode == "recall" )
+	{
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			if ( `optionVar -exists $frameLayoutList[$cnt]` )
+				frameLayout -e -collapse `optionVar -q $frameLayoutList[$cnt]` $frameLayoutList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $floatSliderGrpList ); $cnt++ )
+			if ( `optionVar -exists $floatSliderGrpList[$cnt]` )
+				floatSliderGrp -e -value `optionVar -q $floatSliderGrpList[$cnt]` $floatSliderGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $checkBoxList ); $cnt++ )
+			if ( `optionVar -exists $checkBoxList[$cnt]` )
+				checkBox -e -value `optionVar -q $checkBoxList[$cnt]` $checkBoxList[$cnt];
+	}
+
+	if ( $mode == "reset" )
+	{
+		for ( $cnt = 0; $cnt < size( $frameLayoutList ); $cnt++ )
+			optionVar -remove $frameLayoutList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $floatSliderGrpList ); $cnt++ )
+			optionVar -remove $floatSliderGrpList[$cnt];
+
+		for ( $cnt = 0; $cnt < size( $checkBoxList ); $cnt++ )
+			optionVar -remove $checkBoxList[$cnt];
+	}
+}
+
+//
+// Main procedure
+//
+global proc cpsv_main ( string $function )
+{
+	// get UI values
+	float $snapTolerance =	`floatSliderGrp -q -v cpsv_snapTolerance`;
+	int $enableAxis[];
+	$enableAxis[0] =	`checkBox -q -v cpsv_enableXAxis`;
+	$enableAxis[1] =	`checkBox -q -v cpsv_enableYAxis`;
+	$enableAxis[2] =	`checkBox -q -v cpsv_enableZAxis`;
+
+	string $originalList[] = `cpsc_filterOriginal`;
+	if( !size( $originalList ) )
+		error "No valid original CPS geometry selected\n";
+
+	string $selPointList[] = {}; // points to be selected at end of operation
+
+	for( $oCnt = 0; $oCnt < size( $originalList ); $oCnt++ )
+	{
+		// get connected polyChipOff nodes
+		string $chipOffNodes[] = `cpsc_getPolyChipOffNodes $originalList[$oCnt]`;
+		if( !size( $chipOffNodes ) )
+		{
+			confirmDialog
+				-title "Connect Poly Shape Error"
+				-message (
+					"Polygon shape \"" + $originalList[$oCnt] + "\" has no mirror node applied.\n" +
+					"The snap tool only operates on CPS polygon meshes mirrored about one or more axes.\n\n" )
+			    	-button "OK";
+
+			continue;
+		}
+
+		// get border edges
+		string $obj[] = `listRelatives -p $originalList[$oCnt]`;
+		getBorderEdges $obj[0];
+		string $borderEdges[]= `ls -sl -flatten`;
+		if( !size( $borderEdges ) )
+		{
+			confirmDialog
+				-title "Connect Poly Shape Error"
+				-message (
+					"Polygon shape \"" + $originalList[$oCnt] + "\" is closed. The snap tool\n" +
+					"cannot operate on closed polygon meshes.\n\n" )
+			    	-button "OK";
+
+			continue;
+		}
+
+		for( $cCnt = 0; $cCnt < size( $chipOffNodes ); $cCnt++ )
+		{
+			// get chipOffNode axis
+			int $chipOffAxis = 0; // 1 = x, 2 = y; 4 = z
+			if( `getAttr( $chipOffNodes[$cCnt] + ".scaleX" )` == -1.0 )
+				$chipOffAxis += 1;
+			if( `getAttr( $chipOffNodes[$cCnt] + ".scaleY" )` == -1.0 )
+				$chipOffAxis += 2;
+			if( `getAttr( $chipOffNodes[$cCnt] + ".scaleZ" )` == -1.0 )
+				$chipOffAxis += 4;
+
+			if( !( $chipOffAxis == 1 || $chipOffAxis == 2 || $chipOffAxis == 4 ) )
+			{
+				confirmDialog
+					-title "Connect Poly Shape Error"
+					-message (
+						"Mirror node \"" + $chipOffNodes[$cCnt] + "\" connected to\n" +
+						"\"" + $originalList[$oCnt] + "\" has no or more than one\n" +
+						"axis enabled. Skipping this node.\n\n" )
+				    	-button "OK";
+	
+				continue;
+			}
+
+			// convert axis to value between 0-2 (xyz)
+			$chipOffAxis = float( $chipOffAxis ) / 2.0;
+
+			// check if axis is enabled
+			if( !$enableAxis[$chipOffAxis] )
+				continue;
+
+			// convert border edges to vertices
+			string $vertices[] = `polyListComponentConversion -fe -tv $borderEdges`;
+			$vertices = `ls -flatten $vertices`; // expand component list
+
+			// get mirror coordinate from polyChipOff node
+			string $axisLetter[3] = {"X", "Y", "Z"};
+			float $mirrorCoord = `getAttr ( $chipOffNodes[$cCnt] + ".pivot" + $axisLetter[$chipOffAxis] )`;
+
+			// snap vertices to mirror plane
+			for( $cnt = 0; $cnt < size( $vertices ); $cnt++ )
+			{
+				float $pos[] = `xform -q -ws -a -t $vertices[$cnt]`;
+				if( $pos[$chipOffAxis] >= $mirrorCoord - $snapTolerance &&
+				    $pos[$chipOffAxis] <= $mirrorCoord + $snapTolerance &&
+				    $pos[$chipOffAxis] != $mirrorCoord )
+				{
+					if( $function == "snap" || $function == "snapAndSelect" )
+					{
+						$pos[$chipOffAxis] = $mirrorCoord;
+						xform -ws -a -t $pos[0] $pos[1] $pos[2] $vertices[$cnt];
+					}
+					if( $function == "select" || $function == "snapAndSelect" )
+						$selPointList[size( $selPointList )] = $vertices[$cnt];
+				}	    
+			}
+		}
+	}
+
+	select -r $selPointList;
+}
+
+// end of script

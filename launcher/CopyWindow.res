@@ -1,0 +1,38 @@
+"CopyWindow.res"
+{
+	"CCopyWindow"
+	{
+		"ControlName"		"Frame"
+		"fieldName"		"CCopyWindow"
+		"xpos"		"457"
+		"ypos"		"567"
+		"wide"		"384"
+		"tall"		"100"
+		"autoResize"		"0"
+		"pinCorner"		"0"
+		"visible"		"1"
+		"enabled"		"1"
+		"tabPosition"		"0"
+		"settitlebarvisible"		"1"
+		"Title"		"Installing..."
+	}
+	"MessageLabel"
+	{
+		"ControlName"		"Label"
+		"fieldName"		"MessageLabel"
+		"xpos"		"10"
+		"ypos"		"37"
+		"wide"		"350"
+		"tall"		"24"
+		"autoResize"		"0"
+		"pinCorner"		"0"
+		"visible"		"1"
+		"enabled"		"1"
+		"tabPosition"		"0"
+		"labelText"		"Copying files, please wait..."
+		"textAlignment"		"west"
+		"dulltext"		"0"
+		"brighttext"		"0"
+		"wrap"		"0"
+	}
+}

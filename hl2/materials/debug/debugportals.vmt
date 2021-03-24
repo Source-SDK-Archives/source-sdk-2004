@@ -1,0 +1,7 @@
+"UnlitGeneric"
+{
+	// Original shader: SingleColor
+	"$color" "[ 0.6 1 0.6 ]"
+	"$ignorez" "1"
+	"%noToolTexture" 1
+}

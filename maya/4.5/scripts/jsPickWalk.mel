@@ -1,0 +1,451 @@
+// Copyright (C) 1997-2001 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+//	SCRIPT:	jsPickWalk.mel	
+//	AUTHOR:	Jason Schleifer
+//			oy_vay@hotmail.com
+//	DATE:	July 16, 2001	
+//
+//	DESCRIPTION:	allows the user to pickWalk to any object
+//					using the traditional up/down/left/right
+//
+//	USAGE:			There are two different parts to jsPickWalk,
+//					definition and usage.
+//
+//					To define a direction, you use jsMakePickWalk
+//					with the object you want to add the pickWalk on,
+//					the object you want to pickWalk to, and the direction.
+//					eg:  jsMakePickWalk nurbsSphere1 nurbsSphere2 down
+//
+//					To go a direction, use jsPickWalk with an object
+//					selected:
+//					jsPickWalk down;
+//
+//					To be added:  jsMakePickWalkUI for adding a pickWalk
+//					interface.
+//
+//	NOTE:			This script will work with multiple objects
+//					selected.
+//			
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+
+global proc int isValidDir (string $dir)
+{
+	// checks and makes sure that $dir is a valid direction
+	$validDirs = { "u", "d", "l", "r", "up", "down", "left", "right", "north",
+	"south", "west", "east", "n", "s", "w", "e" };
+
+	for ($valid in $validDirs)
+	{
+		if ($valid == $dir)
+			return 1;
+	}
+	
+	return 0;
+}
+
+global proc string returnValidDir (string $dir)
+{
+	// returns a valid direction for what we use.. for example, the user can
+	// enter "north" "up" "n" or "u" and they will all work for "up"
+	switch ($dir)
+	{
+		case "u":
+		case "n":
+		case "up":
+		case "north":
+			return "up";
+			break;
+		case "d":
+		case "s":
+		case "down":
+		case "south":
+			return "down";
+			break;
+		case "l":
+		case "w":
+		case "left":
+		case "west":
+			return "left";
+			break;
+		case "r":
+		case "e":
+		case "right":
+		case "east":
+			return "right";
+			break;
+		
+	}
+	return "";
+}
+global proc jsSetPickWalkModeCreate ()
+{
+	global string $gJsPickWalkMode;
+	$gJsPickWalkMode = "create";
+
+}
+global proc jsSetPickWalkModeNavigate ()
+{
+	global string $gJsPickWalkMode;
+	$gJsPickWalkMode = "navigate";
+
+}
+global proc jsBuildMakePickWalkWin (string $win)
+{
+	window -t "Make jsPickWalk" $win;
+	columnLayout -adj true;	
+	$f = `formLayout -nd 100`;
+	$t1 = `text -l "" js_t1`;
+	$t2 = `button -l "blank" js_t2`;
+	$t3 = `text -l "" js_t3`;
+	$t4 = `button -l "blank" js_t4`;
+	$t5 = `button -l "nothing selected" js_t5`;
+	$t6 = `button -l "blank" js_t6`;
+	$t7 = `text -l "" js_t7`;
+	$t8 = `button -l "blank" js_t8`;
+	$t9 = `text -l "" js_t9`;
+	$mode = `radioButtonGrp -cw 1 100 -cal 1 "left" -l "CURRENT MODE:"  -sl 1
+		-l1 "Creation" -l2 "Navigation" -nrb 2 -on1 "jsSetPickWalkModeCreate"
+		-on2 "jsSetPickWalkModeNavigate"`;
+
+	formLayout -e
+		-af $mode top 5
+		-af $mode left 5
+		-af $mode right 5
+
+		-ac $t1 top 10 $mode
+		-af $t1 left 0
+		-ap $t1 right 0 33
+		
+		-ac $t2 top 10 $mode
+		-ap $t2 left 0 33
+		-ap $t2 right 0 66
+
+		-ac $t3 top 10 $mode
+		-ap $t3 left 0 66
+		-af $t3 right 0
+
+		-ac $t4 top 5 $t2
+		-af $t4 left 0
+		-ap $t4 right 0 33
+		
+		-ac $t5 top 5 $t2
+		-ap $t5 left 0 33
+		-ap $t5 right 0 66
+
+		-ac $t6 top 5 $t2
+		-ap $t6 left 0 66
+		-af $t6 right 0
+
+		-ac $t7 top 5 $t4
+		-af $t7 left 0
+		-ap $t7 right 0 33
+		
+		-ac $t8 top 5 $t4
+		-ap $t8 left 0 33
+		-ap $t8 right 0 66
+
+		-ac $t9 top 5 $t4
+		-ap $t9 left 0 66
+		-af $t9 right 0
+
+		$f;
+
+
+	button -e -c jsAddSelectedObjectToMiddle js_t5;	
+	button -e -c ("jsMakePickWalkButtonClicked js_t2") js_t2;
+	button -e -c ("jsMakePickWalkButtonClicked js_t4") js_t4;
+	button -e -c ("jsMakePickWalkButtonClicked js_t6") js_t6;
+	button -e -c ("jsMakePickWalkButtonClicked js_t8") js_t8;
+}
+global proc jsMakePickWalkUI ()
+{
+	// builds a window which displays a UI to make it easier to build a
+	// pickWalk relationship
+
+	$win = "jsMakePickWalkWin";
+	if (`window -exists $win`)
+		deleteUI $win;
+	
+	jsBuildMakePickWalkWin $win;
+
+	showWindow $win;
+	jsAddSelectedObjectToMiddle;
+}
+global proc jsResetMakePickWalkButtons ()
+{
+	button -e -l "blank" js_t2;
+	button -e -l "blank" js_t4;
+	button -e -l "nothing selected" js_t5;
+	button -e -l "blank" js_t6;
+	button -e -l "blank" js_t8;
+
+}
+global proc jsAddSelectedObjectToMiddle ()
+{
+	// look at the selected object, add it to the middle, then update the ui
+	$objs = `ls -sl`;
+	if (size($objs) > 0)
+	{
+		// get the good name
+		$goodName = `endName $objs[0]`;
+		button -e -l $goodName -ann $objs[0] js_t5;
+	}
+
+	jsUpdateBuildMakePickWalkWin;
+}
+global proc jsUpdateBuildMakePickWalkWin ()
+{
+	// based on the middle object, find out what objects are connected up down
+	// left and right, and put them in the buttons
+	string	$midObject = `button -q -ann js_t5`;
+
+	if (!`objExists $midObject`)	
+	{
+		// clear all buttons
+		jsResetMakePickWalkButtons;
+	}
+	else
+	{
+		$goodName = "blank";
+		$up = "blank";
+		$down = "blank";
+		$left = "blank";
+		$right = "blank";
+
+		// search and see if there are any connections
+		$up = `jsReturnConnectedObj $midObject "up"`;
+		$down = `jsReturnConnectedObj $midObject "down"`;
+		$left = `jsReturnConnectedObj $midObject "left"`;
+		$right = `jsReturnConnectedObj $midObject "right"`;
+
+		// now replace them if they're true
+
+		if ($up != "blank")
+			$goodName = `endName $up`;
+		button -e -l $goodName -ann $up js_t2;
+		
+		$goodName = "blank";
+		if ($down != "blank")
+			$goodName = `endName $down`;
+		button -e -l $goodName -ann $down js_t8;
+
+		$goodName = "blank";
+		if ($left != "blank")
+			$goodName = `endName $left`;
+		button -e -l $goodName -ann $left js_t4;
+		
+		$goodName = "blank";
+		if ($right != "blank")
+			$goodName = `endName $right`;
+		button -e -l $goodName -ann $right js_t6;
+		
+	}
+}
+
+global proc jsMakePickWalkButtonClicked (string $button)
+{
+	// one of the buttons was clicked.  Let's see if there's anything in the
+	// middle.
+	
+	// get the button based on the dir
+	string $dir;
+	string $attr;
+	switch ($button)
+	{
+		case "js_t2":
+			$dir = "up";
+			$attr = "js_up";
+			break;
+		case "js_t8":
+			$dir = "down";
+			$attr = "js_down";
+			break;
+		case "js_t4":
+			$dir = "left";
+			$attr = "js_left";
+			break;
+		case "js_t6":
+			$dir = "right";
+			$attr = "js_right";
+			break;
+	}
+	string	$midObject = `button -q -ann js_t5`;
+	if (`objExists $midObject`)
+	{
+		// check and see what mode we're in
+		global string $gJsPickWalkMode;
+
+		if ($gJsPickWalkMode == "create")
+		{
+			// check and see if something is selected,  if not, it may mean they
+			// want to clear the pickWalk direction
+			string $sel[0];
+			$sel = `ls -sl`;
+			if (size($sel) == 0)
+			{
+				// check and see if anything is in the appropriate button
+				$label = `button -q -l $button`;
+				if ($label != "blank")
+				{
+					// check and see if they want to clear
+					$result = `confirmDialog -m ("You have nothing selected.\nDo you want to clear the " + $dir + " direction for " + $midObject + "?") -b "Yes" -b "No" -cancelButton "No"`;
+					if ($result == "Yes")
+					{
+						string $con[0];
+						$con = `listConnections ($midObject + "." + $attr)`;
+						if (size($con) > 0)
+						{
+							disconnectAttr ($con[0] + ".message") ($midObject + "." + $attr);
+						}
+					}
+				}
+			}
+			else
+			{
+				// something IS selected.  Let's make that the new connection
+				// first, we'll add the attribute to $midObject if necessary
+				if (!`attributeQuery -exists -node $midObject $attr`)
+					addAttr -ln $attr -at message $midObject;
+				
+				// first make sure they're not the same object 
+				if ($midObject == $sel[0])
+				{
+					confirmDialog -m "You're trying to make an object pickWalk to itself.. it can't do that!\n";
+					error "You're trying to make an object pickWalk to itself.. it can't do that!\n";
+					
+				}
+				else
+				{
+					// now make the connection
+					connectAttr -f ($sel[0] + ".message") ($midObject + "." + $attr);
+				}
+			}
+		}
+		else // we're in navigate mode..
+		{
+			// pickWalk
+			jsPickWalk $dir;
+
+			// rebuild the UI
+			jsAddSelectedObjectToMiddle;
+		}
+	}
+	jsUpdateBuildMakePickWalkWin;
+}
+global proc jsMakePickWalk (string $object, string $destination, string $dir)
+{
+	// check and make sure the direction is valid
+	if (!`isValidDir $dir`)
+		error ($dir + " is not a valid direction.\n");
+
+	$validDir = `returnValidDir $dir`;
+
+	// now make sure $object and $destination are valid objects
+	if (!`objExists $object`)
+		error ($object + " does not exist.\n");
+	if (!`objExists $destination`)
+		error ($destination + " does not exist.\n");
+
+	// now add the attribute
+	$attr = ("js_"+$validDir);
+	
+	if (!`attributeQuery -exists -node $object $attr`)
+		addAttr -ln $attr -at message ($object);
+
+	// connect the attribute
+	connectAttr -f  ($destination + ".message") ($object + "." + $attr);
+
+}
+
+global proc jsMakePickWalkSel ( string $dir )
+{
+	// this proc can be used to make a pickWalk if you do it based off the
+	// selection list.
+	//
+	// the first object selected is the destination, the second is the object
+	
+	// check and make sure the direction is valid
+	if (!`isValidDir $dir`)
+		error ($dir + " is not a valid direction.\n");
+
+	$validDir = `returnValidDir $dir`;
+	
+	// get the selected objects
+	$objs = `ls -sl`;
+
+	// check that there are enough
+	if (size($objs)<2)
+		error ("You need 2 objects selected to perform jsMakePickWalkSel.\n");
+
+	$dest = $objs[0];
+	$obj = $objs[1];
+
+	$cmd = ("jsMakePickWalk \"" + $obj + "\" \"" + $dest + "\" \"" + $validDir + "\"");
+	evalEcho $cmd;
+}
+
+global proc string jsReturnConnectedObj (string $ob, string $dir)
+{
+	// given an object and a direction, this proc returns the name of the
+	// connected object.
+	if (`attributeQuery -exists -node $ob ("js_"+$dir)`)
+	{
+		// the attribute exists.  check and see if an object is connected
+		string $con[0];
+		$con = `listConnections ($ob + ".js_"+$dir)`;
+		if (size($con)>0)
+		{
+			// the object exists
+			return $con[0];
+		}
+	}
+	return "";
+}
+
+global proc jsPickWalk ( string $dir )
+{
+	
+	// check and make sure the direction is valid
+	if (!`isValidDir $dir`)
+		error ($dir + " is not a valid direction.\n");
+
+	$validDir = `returnValidDir $dir`;
+
+	// now get a list of selected objects
+	string $objs[0];
+	string $newSel[0];
+	int $new = 0;	
+	// for each selected object, find out of there's an object that can be
+	// reached by the given jsPickWalk dir
+	$objs = `ls -sl`;
+	for ($ob in $objs)
+	{
+		string $connected = "";
+		
+		$connected = `jsReturnConnectedObj $ob $validDir`;
+		if ($connected != "")
+		{
+			$newSel[$new++] = $connected;
+		}
+	}
+	if (size($newSel) > 0)
+		select $newSel;
+	
+}

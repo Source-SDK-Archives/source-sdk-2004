@@ -1,0 +1,295 @@
+// Copyright (C) 1997-2001 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+//------------------------------------------------------------------------------------------------------------//
+//------------------------------------------------------------------------------------------------------------//
+//	SCRIPT:	jsOrientJointUI.mel
+//	AUTHOR:	Jason Schleifer
+//			oy_vay@hotmail.com
+//	DATE:		July 12, 2001
+//
+//	DESCRIPTION:	This script can be used to change the orientation of selected
+//			joints.  It allows the user to align them so their Y axis is facing
+//			down the joint, and the Z is facing either UP or DOWN.
+//
+//------------------------------------------------------------------------------------------------------------//	
+//------------------------------------------------------------------------------------------------------------//
+
+
+//------------------------------------------------------------------------------------------------------------//
+//	PROC:	jsOrientJointUI
+//	
+//		This is the main procedure for jsOrientJointUI. 
+//------------------------------------------------------------------------------------------------------------//
+
+global proc jsOrientJointUI ()
+{
+
+	// Create a window which will allow the user to choose between Z-up and Z-down
+	string $win = "jsOrientJointWindow";
+
+	// check and see if the window exists.  if it does, then delete it.
+	if (`window -exists $win`)
+		deleteUI $win;
+
+	// create the window
+	jsCreateOrientJointWindow $win;
+
+	// make the callbacks
+	jsCreateOrientJointWindowCB;
+
+	// show the window
+	showWindow $win;
+}
+
+//------------------------------------------------------------------------------------------------------------//
+//	PROC:	jsCreateOrientJointWindow
+//
+//		This procedure creates the joint orient window.
+//	
+//	IN:	string $win - the name of the window that's getting created.
+//------------------------------------------------------------------------------------------------------------//
+
+global proc jsCreateOrientJointWindow ( string $win )
+{
+	// define the window;
+	window 
+		-title "Orient Joint Window"
+		$win;
+
+	// create the row-column layout.  This layout will let us place the buttons next to eachother.
+	$rc = `rowColumnLayout -nc 2`;
+
+		// create the two buttons.
+		button -l "Z Up" jsZUpButton;
+		button -l "Z Down" jsZDownButton;
+
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------//
+//	PROC:	jsCreateOrientJointWindowCB
+//
+//		This procedure the callbacks for the buttons.
+//	
+//-------------------------------------------------------------------------------------------------------------------------------------//
+
+global proc jsCreateOrientJointWindowCB ()
+{
+	// define the command first.  The command will take 1 input, either 1 or 0.  1 will mean Z is UP.  0 will mean Z is DOWN
+	string $cmd = "jsOrientJoint ";
+
+	button -e -c ($cmd + "1") jsZUpButton;
+	button -e -c ($cmd + "0") jsZDownButton;
+}
+
+//-------------------------------------------------------------------------------------------------------------------------------------//
+//	PROC:	jsOrientJoint
+//
+//		This procedure orients the joints based on the given input: 1 or 0
+//
+//	IN:	int $direction - 1 = up, 0 = down
+//	
+//-------------------------------------------------------------------------------------------------------------------------------------//
+
+global proc jsOrientJoint ( int $direction )
+{
+	// Define Variables
+	string $joints[0];		// these will be all the selected joints
+	string $joint;
+	
+	// get all the joints which are selected
+	$joints = `ls -sl -type joint`;
+
+	// check and see if there are any joints selected.  If not, error out.
+	if (size($joints) == 0)
+		error ("You have no joints selected.\n");
+		
+
+	// create a progress window to show how long it's going to take
+	int $amount = 0;
+
+	progressWindow
+		-title "Aligning Selected Joints"
+		-progress $amount
+		-status "Aligning Joint: "
+		-isInterruptable true;
+
+	$size = `size ($joints)`;
+	int $count = 1;
+	// now we know that there are joints selected. Now, we step through each of the joints and perform a series of operations
+	// that will align the joint properly.
+	
+	for ($joint in $joints)
+	{
+		// check and see if the dialog has been cancelled
+		if ( `progressWindow -query -isCancelled`) break;
+		
+		$percent = ($count/$size);
+		$amount = $percent * 100;
+		$count++;
+		progressWindow -edit
+			-progress $amount
+			-status ("Aligning Joint: " + $joint);
+		
+		// first get a list of all the children of the joint
+		string $children[0];
+
+		$children = `listRelatives -f -c $joint`;  // this lists all the children of the joint, and their full paths.
+		
+		// make sure they have children first!
+		if (size ($children) > 0)
+		{
+			//  we need to perform the following acts on the children:
+			//	unlock the translation/rotation attributes
+			//	find out which one is the first joint (that's the one we'll orient towards)
+			//	unparent the children while the joint is being oriented
+			//	re-parent the children after the joint is oriented
+			//	re-lock all the attributes that were locked before
+
+			string $child;
+			int $firstJoint = 0;
+			for ($child in $children)
+			{
+				// find out if $child is a joint and if it's the first one.
+				// if it is, make a connection to $joint
+				if ((`nodeType $child` == "joint") && ($firstJoint == 0))
+				{
+					addAttr -ln "jsTmpFirstJoint" -at message $joint;
+					connectAttr ($child + ".message") ($joint + ".jsTmpFirstJoint");
+
+					$firstJoint = 1;
+				}
+				// add an "jsTmpAttrLocked" attribute to $child.  This will be used to store which attributes were locked 
+				if (!`attributeQuery -exists -node $child "jsTmpAttrLocked"`)
+					addAttr -ln "jsTmpAttrLocked" -dt "string" $child;
+
+				// now for each of the attributes, see if it's locked.  If it is, unlock it and store it in jsTmpAttrLocked.
+				string $attrs[] = {"t", "tx", "ty", "tz", "r", "rx", "ry", "rz"};
+				string $at;
+				string $lockedAttrs = "";
+			
+				for ($at in $attrs)
+				{
+					if (`getAttr -l ($child + "." + $at)`)
+					{
+						// if the attribute is locked, unlock it
+						setAttr -l 0 ($child + "." + $at);
+					
+						// store that value in $lockedAttrs
+						$lockedAttrs = ($lockedAttrs + " " + $at);
+					}
+				}
+			
+				// we now have a list of locked attrs, and the children are unlocked.
+				// store those values on jsTmpAttrLocked
+				//print ("setAttr " + $child + ".jsTmpAttrLocked " + $lockedAttrs + "\n");
+				setAttr -type "string" ($child + ".jsTmpAttrLocked") $lockedAttrs;
+			
+			
+			}
+			// unparent the children, but store their names
+			string $unparentedChildren[0];
+
+			select $children;
+			parent -w $children;
+			
+			$unparentedChildren = `ls -sl`;
+		
+			// now it's time to orient the joint towards the first joint
+			string $con[] = `listConnections ($joint + ".jsTmpFirstJoint")`;
+			string $aimJoint = $con[0];
+
+			// first set the rotations and joint orients to 0 0 0
+			setAttr -l 0 ($joint + ".r");
+			setAttr -l 0 ($joint + ".rx");
+			setAttr -l 0 ($joint + ".ry");
+			setAttr -l 0 ($joint + ".rz");
+
+			setAttr ($joint + ".r") 0 0 0;
+			setAttr ($joint + ".jo") 0 0 0;
+
+			// now create a locator which will go either above or below the joint depending on what direction we chose
+			$pos = `xform -q -ws -rp $joint`;
+		
+			$loc = `spaceLocator`;
+		
+			$tx = $pos[0];
+			$ty = $pos[1];
+			$tz = $pos[2];
+			if ($direction == 1)
+				$ty = $ty + 5;
+			else
+				$ty = $ty-5;
+
+			// move the locator either above or below the joint
+			move -a -ws $tx $ty $tz $loc[0];
+
+			// now let's create an aimConstraint which aims at $aimJoint and uses $loc[0] as the up vector
+			select $aimJoint $joint;
+
+			$const = `aimConstraint -wut "object" -aim 0 1 0 -u 0 0 1 -wuo $loc[0]`;
+
+			// now that the constraint is made, we can delete the constraint and the $loc
+			delete $const $loc[0];
+
+			// find the rotations on the joint and put them into the joint orients
+			$r = `getAttr ($joint + ".r")`;
+		
+			setAttr ($joint + ".jo") $r[0] $r[1] $r[2];
+
+			// set the rotations back to 0 0 0
+			setAttr ($joint + ".r") 0 0 0;
+
+			// parent all the children back
+			select $unparentedChildren;
+
+			parent $unparentedChildren $joint;
+			$children = `ls -sl`;
+			// for each child, re-lock the attributes which are supposed to be locked
+			for ($child in $children)
+			{
+				string $attrsToLock = `getAttr ($child + ".jsTmpAttrLocked")`;
+				string $breakApart[0];
+
+				// tokenize $attrsToLock to find all the attributes
+				tokenize ($attrsToLock, " ", $breakApart);
+
+				for ($at in $breakApart)
+				{
+					if (`attributeQuery -exists -node $child $at`)
+					{
+						setAttr -l 1 ($child + "." + $at);
+						//print ("setAttr -l 1 " + $child + "." + $at + "\n");
+					}
+				}
+				if (`attributeQuery -exists -node $child "jsTmpAttrLocked"`)
+					deleteAttr -at "jsTmpAttrLocked" $child;
+
+			}
+	
+			// break the connection between .jsTmpFirstJoint and the first joint
+			$con = `listConnections ($joint + ".jsTmpFirstJoint")`;
+			disconnectAttr ($con[0] + ".message") ($joint + ".jsTmpFirstJoint");
+
+			// delete the extra attributes
+			if (`attributeQuery -exists -node $joint "jsTmpFirstJoint"`)
+				deleteAttr -at "jsTmpFirstJoint" $joint;
+		}		
+
+	}
+	progressWindow -endProgress;		
+	select $joints;
+}

@@ -1,0 +1,5 @@
+"UnlitGeneric"
+{
+	"$basetexture" "sdk/additive"
+	"$additive" 1
+}
